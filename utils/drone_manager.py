@@ -14,7 +14,7 @@ class DroneManager:
     update_frequency = 10 # Hz
     lerp_threshold = 0.1 # m
 
-    def __init__(self):
+    def __init__(self, event_loop: asyncio.AbstractEventLoop = asyncio.get_event_loop()):
         # set up drone
         self.raw_drone: Drone = Drone()
         self.raw_drone.pair()
@@ -27,6 +27,8 @@ class DroneManager:
         self.target_pose: np.ndarray = np.array([0, 0, 0, 0])
         self.managed_flight_state: ManagedFlightState = ManagedFlightState.LANDED
         # set up update loop
+        self.event_loop = event_loop
+        self.event_loop.create_task(self.start_update_loop())
 
     async def takeoff(self, altitude=1):
         await self.go_to_abs(None, None, altitude)
@@ -44,6 +46,7 @@ class DroneManager:
         # drone state docs at https://docs.robolink.com/docs/codrone-edu/python/Sensors/24-get_sensor_data
         drone_state = self.raw_drone.get_sensor_data()
         self.drone_pose = np.array([drone_state[16], drone_state[17], drone_state[18], drone_state[14]])
+        logging.debug(f"Drone polled, pose now {np.array2string(self.drone_pose)}")
         # TODO: Constantly set absolute location to target if needed
 
     async def go_to_abs(self, x: Optional[float], y: Optional[float], z: Optional[float]):

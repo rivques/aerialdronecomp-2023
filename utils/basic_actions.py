@@ -3,6 +3,7 @@ from utils.action import Action
 from utils.drone_manager import DroneManager, ManagedFlightState
 import asyncio
 from enum import Enum
+import logging
 
 class ErrorHandlingStrategy(Enum):
     RAISE = 0
@@ -20,6 +21,8 @@ class GoToAction(Action):
         await drone_manager.go_to_abs(self.x, self.y, self.z)
     async def loop(self, drone_manager: DroneManager) -> bool:
         return drone_manager.managed_flight_state == ManagedFlightState.IDLE
+    def __str__(self):
+        return f"GoToAction({self.x}, {self.y}, {self.z})"
 
 class LandAction(Action):
     async def setup(self, drone_manager: DroneManager):
@@ -34,21 +37,23 @@ class TakeoffAction(Action):
         return drone_manager.managed_flight_state == ManagedFlightState.IDLE
 
 class SequentialAction(Action):
-    def __init__(self, drone_manager: Optional[DroneManager], actions: List[Action], ehs: ErrorHandlingStrategy = ErrorHandlingStrategy.RAISE):
+    def __init__(self, drone_manager: Optional[DroneManager], actions: List[Action], ehs: ErrorHandlingStrategy = ErrorHandlingStrategy.RAISE, event_loop: asyncio.AbstractEventLoop = asyncio.get_event_loop()):
         self.drone_manager = drone_manager
         self.actions = actions
         self.ehs = ehs
+        self.event_loop = event_loop
     
     def run_sequence(self):
-        if self.drone_manager is None:
-            self.drone_manager = DroneManager()
-            asyncio.run(self.drone_manager.drone)
+        seqtask = self.event_loop.create_task(self.setup())
+        self.event_loop.run_until_complete(seqtask)
     
     async def setup(self):
         for action in self.actions:
+            logging.info(f"Now running {action}...")
             try:
                 await action.setup(self.drone_manager)
                 while True:
+                    asyncio.sleep(0)
                     if await action.loop(self.drone_manager):
                         break
             except Exception as e:

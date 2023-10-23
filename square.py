@@ -3,4 +3,11 @@ from utils.basic_actions import SequentialAction, TakeoffAction, GoToAction, Lan
 
 drone_manager = DroneManager()
 
-SequentialAction(drone_manager, [], ErrorHandlingStrategy.LAND).run_sequence()
+SequentialAction(drone_manager, [
+    TakeoffAction(),
+    GoToAction(0.5, 0),
+    GoToAction(0.5, 0.5),
+    GoToAction(0, 0.5),
+    GoToAction(0, 0),
+    LandAction()
+], ErrorHandlingStrategy.LAND).run_sequence()

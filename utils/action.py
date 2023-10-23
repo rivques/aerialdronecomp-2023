@@ -8,3 +8,6 @@ class Action:
     # runs frequently, returns true to stop
     async def loop(self, drone_manager: DroneManager) -> bool:
         return True
+    
+    def __str__(self):
+        return self.__class__.__name__
