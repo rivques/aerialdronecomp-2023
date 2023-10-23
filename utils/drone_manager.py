@@ -27,17 +27,15 @@ class DroneManager:
         self.target_pose: np.ndarray = np.array([0, 0, 0, 0])
         self.managed_flight_state: ManagedFlightState = ManagedFlightState.LANDED
         # set up update loop
-        self.update_task = asyncio.create_task(self.update_loop())
-    
 
     async def takeoff(self, altitude=1):
-        await self.go_to(None, None, altitude)
+        await self.go_to_abs(None, None, altitude)
     
     async def land(self):
-        await self.go_to(None, None, 0)
+        await self.go_to_abs(None, None, 0)
         self.managed_flight_state = ManagedFlightState.LANDED
     
-    async def update_loop(self):
+    async def start_update_loop(self):
         while True:
             await asyncio.sleep(1/self.update_frequency)
             self.poll_drone()
@@ -48,7 +46,7 @@ class DroneManager:
         self.drone_pose = np.array([drone_state[16], drone_state[17], drone_state[18], drone_state[14]])
         # TODO: Constantly set absolute location to target if needed
 
-    async def go_to(self, x: Optional[float], y: Optional[float], z: Optional[float]):
+    async def go_to_abs(self, x: Optional[float], y: Optional[float], z: Optional[float]):
         # None means don't change that value
         target_x = x if x is not None else self.drone_pose[0]
         target_y = y if y is not None else self.drone_pose[1]
@@ -63,5 +61,12 @@ class DroneManager:
                 break
         self.managed_flight_state = ManagedFlightState.IDLE
     
+    async def go_to_rel(self, x: float, y: float, z: float):
+        target_x = self.drone_pose[0] + x
+        target_y = self.drone_pose[1] + y
+        target_z = self.drone_pose[2] + z
+
+        await self.go_to_abs(target_x, target_y, target_z)
+
     def get_colors(self):
         return self.raw_drone.get_colors()
