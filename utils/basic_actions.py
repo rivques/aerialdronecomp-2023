@@ -53,7 +53,7 @@ class SequentialAction(Action):
             try:
                 await action.setup(self.drone_manager)
                 while True:
-                    asyncio.sleep(0)
+                    await asyncio.sleep(0)
                     if await action.loop(self.drone_manager):
                         break
             except Exception as e:
