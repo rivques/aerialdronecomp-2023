@@ -1,4 +1,6 @@
 from typing import Optional, List
+
+import numpy as np
 from utils.action import Action
 from utils.drone_manager import DroneManager, ManagedFlightState
 import asyncio
@@ -32,9 +34,10 @@ class LandAction(Action):
 
 class TakeoffAction(Action):
     async def setup(self, drone_manager: DroneManager):
+        logging.info("Taking off...")
         await drone_manager.takeoff()
     async def loop(self, drone_manager: DroneManager) -> bool:
-        return drone_manager.managed_flight_state == ManagedFlightState.IDLE
+        return True
 
 class SequentialAction(Action):
     def __init__(self, drone_manager: Optional[DroneManager], actions: List[Action], ehs: ErrorHandlingStrategy = ErrorHandlingStrategy.RAISE, event_loop: asyncio.AbstractEventLoop = asyncio.get_event_loop()):
@@ -45,7 +48,21 @@ class SequentialAction(Action):
     
     def run_sequence(self):
         seqtask = self.event_loop.create_task(self.setup())
-        self.event_loop.run_until_complete(seqtask)
+        try:
+            self.event_loop.run_until_complete(seqtask)
+        except BaseException as e:
+            if self.ehs == ErrorHandlingStrategy.RAISE:
+                raise e
+            elif self.ehs == ErrorHandlingStrategy.LAND:
+                self.drone_manager.raw_drone.land()
+                raise e
+            elif self.ehs == ErrorHandlingStrategy.ESTOP:
+                self.drone_manager.raw_drone.emergency_stop()
+                return
+            elif self.ehs == ErrorHandlingStrategy.BREAK:
+                return
+            else:
+                raise Exception("Invalid ErrorHandlingStrategy")
     
     async def setup(self):
         for action in self.actions:
@@ -56,7 +73,7 @@ class SequentialAction(Action):
                     await asyncio.sleep(0)
                     if await action.loop(self.drone_manager):
                         break
-            except Exception as e:
+            except BaseException as e:
                 if self.ehs == ErrorHandlingStrategy.RAISE:
                     raise e
                 elif self.ehs == ErrorHandlingStrategy.LAND:
