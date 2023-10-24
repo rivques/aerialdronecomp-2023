@@ -1,9 +1,9 @@
-from utils.drone_manager import DroneManager
+from utils.drone_manager import DroneManager, DroneType
 from utils.basic_actions import SequentialAction, TakeoffAction, GoToAction, LandAction, ErrorHandlingStrategy
 import logging
 logging.basicConfig(level=logging.INFO)
 
-drone_manager = DroneManager(fake_drone=False)
+drone_manager = DroneManager(drone_type=DroneType.PROPS_OFF)
 
 SequentialAction(drone_manager, [
     TakeoffAction(),
