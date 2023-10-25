@@ -2,6 +2,7 @@ from codrone_edu.drone import *
 import asyncio
 import logging
 from typing import Optional
+from matplotlib.axes import Axes
 from matplotlib.figure import Figure
 import numpy as np
 import socket
@@ -32,7 +33,9 @@ def yaw_clip(angle):
     return angle
 
 class DroneManager:
-    update_frequency = 10 # Hz
+    control_frequency = 50 # Hz
+    graph_update_frequency = 10 # Hz
+    gain_history_length = 5 # seconds
     lerp_threshold = 0.15 # m
     pid_controllers = [
         PID(30, 0, 0, setpoint=0, output_limits=(-100, 100)), # x
@@ -86,6 +89,9 @@ class DroneManager:
         asyncio.ensure_future(self.start_update_loop(),loop=self.event_loop)
         if show_error_graph:
             asyncio.ensure_future(self.animate_plot(), loop=self.event_loop)
+            # a 3d array of [time, error, target, current, output] for each axis with room for gain_history_length seconds of data with axes as first dimension
+            self.error_history = np.zeros((4, 5, self.gain_history_length * self.control_frequency))
+            print
         
         self.disabled_control_axes = disabled_control_axes 
 
@@ -100,7 +106,7 @@ class DroneManager:
     
     async def start_update_loop(self):
         while True:
-            await asyncio.sleep(1/self.update_frequency)
+            await asyncio.sleep(1/self.control_frequency)
             self.poll_drone()
     
     def poll_drone(self):
@@ -110,29 +116,50 @@ class DroneManager:
         else:
             drone_state = self.raw_drone.get_sensor_data()
             self.drone_pose = np.array([drone_state[16], drone_state[17], drone_state[18], drone_state[14]])
+
+        # calculate gains
+        for i, disabled in enumerate(self.disabled_control_axes):
+            if disabled:
+                self.current_output[i] = 0
+            else:
+                self.current_output[i] = self.pid_controllers[i](self.drone_pose[i])
+
         if self.drone_type in [DroneType.REAL]:
-            # calculate gains
-            self.current_output = np.array([self.pid_controllers[i](self.drone_pose[i]) for i in range(4)])
             # set gains
             self.raw_drone.set_pitch(self.current_output[0])
             self.raw_drone.set_roll(-self.current_output[1]) # roll is negative for some reason
             self.raw_drone.set_throttle(self.current_output[2])
             self.raw_drone.set_yaw(self.current_output[3])
             self.raw_drone.move()
-            logging.debug(f"Drone polled, pose now {np.array2string(self.drone_pose, precision=3)} (target {np.array2string(self.target_pose)}, error {np.linalg.norm(self.drone_pose[:3] - self.target_pose[:3])})")
-            logging.debug(f"Drone gains: x {self.current_output[0]}, y {self.current_output[1]}, z {self.current_output[2]}, yaw {self.current_output[3]}")
+        logging.debug(f"Drone polled, pose now {np.array2string(self.drone_pose, precision=3)} (target {np.array2string(self.target_pose)}, error {np.linalg.norm(self.drone_pose[:3] - self.target_pose[:3])})")
+        logging.debug(f"Drone gains: x {self.current_output[0]}, y {self.current_output[1]}, z {self.current_output[2]}, yaw {self.current_output[3]}")
 
-    def render_plot(self, ax, target, current, output, title):
+    def render_plot(self, ax: Axes, axis_index, title):
+        target = self.target_pose[axis_index]
+        current = self.drone_pose[axis_index]
+        output = self.current_output[axis_index]
+        controller = self.pid_controllers[axis_index]
         error = target - current
+        time_now = time.monotonic()
+        
+        history = np.roll(self.error_history[axis_index], -1, axis=1)
+        history[0, -1] = time_now
+        history[1, -1] = error
+        history[2, -1] = target
+        history[3, -1] = current
+        history[4, -1] = output
         ax.clear()
-        ax.plot(error, 'r', label='Error')
-        ax.plot(target, 'g', label='Target')
-        ax.plot(current, 'b', label='Current')
-        ax.plot(output, 'y', label='Output')
+        ax.plot(time_now - history[0], history[1], label='error')
+        ax.plot(time_now - history[0], history[2], label='target')
+        ax.plot(time_now - history[0], history[3], label='current')
+        ax.plot(time_now - history[0], history[4], label='output')
         ax.legend(loc='upper left')
         ax.set_title(title)
+        
+        return history
 
     async def animate_plot(self):
+        print("animating plot...")
         style.use('fivethirtyeight')
         fig = plt.figure()
         ax1 = fig.add_subplot(2, 2, 1)
@@ -141,17 +168,17 @@ class DroneManager:
         ax4 = fig.add_subplot(2, 2, 4)
 
         def animate(i):
-            self.render_plot(ax1, self.target_pose[0], self.drone_pose[0], self.current_output[0], 'X')
-            self.render_plot(ax2, self.target_pose[1], self.drone_pose[1], self.current_output[1], 'Y')
-            self.render_plot(ax3, self.target_pose[2], self.drone_pose[2], self.current_output[2], 'Z')
-            self.render_plot(ax4, self.target_pose[3], self.drone_pose[3], self.current_output[3], 'Yaw')
+            self.error_history[0] = self.render_plot(ax1, 0, "X")
+            self.error_history[1] = self.render_plot(ax2, 1, "Y")
+            self.error_history[2] = self.render_plot(ax3, 2, "Z")
+            self.error_history[3] = self.render_plot(ax4, 3, "Yaw")
 
-        ani = animation.FuncAnimation(fig, animate, interval=1000/self.update_frequency) # hold on to this reference, or it will be garbage collected
+        ani = animation.FuncAnimation(fig, animate, interval=1000/self.control_frequency) # hold on to this reference, or it will be garbage collected
         plt.show(block=False)
-
+        print("plot shown")
         while True:
-            await asyncio.sleep(1/self.update_frequency)
-            fig.canvas.draw() # if this doesn't work: try plt.ion, plt.show, plt.pause(0.001), or finally kicking it off into another thread
+            await asyncio.sleep(1/self.graph_update_frequency)
+            plt.pause(0.001) # if this doesn't work: try plt.ion, plt.show, plt.pause(0.001), or finally kicking it off into another thread
         
 
     async def go_to_abs(self, x: Optional[float], y: Optional[float], z: Optional[float], yaw: Optional[float] = None):
@@ -164,7 +191,7 @@ class DroneManager:
 
         self.managed_flight_state = ManagedFlightState.MOVING
         while True:
-            await asyncio.sleep(1/self.update_frequency)
+            await asyncio.sleep(1/self.control_frequency)
             # check if we're close enough to the target
             if np.linalg.norm(self.drone_pose[:3] - np.array([target_x, target_y, target_z])) < self.lerp_threshold:
                 break

@@ -3,12 +3,12 @@ from utils.basic_actions import SequentialAction, TakeoffAction, GoToAction, Lan
 import logging
 logging.basicConfig(level=logging.DEBUG)
 
-AXIS_TO_TUNE = 0
+AXIS_TO_TUNE = 2
 
-disabled_control_axes = [False, False, False, False]
-disabled_control_axes[AXIS_TO_TUNE] = True
-drone_manager = DroneManager(drone_type=DroneType.REAL, show_error_graph=True, disabled_control_axes=disabled_control_axes)
-SequentialAction(drone_manager, [TakeoffAction]).run_sequence()
+disabled_control_axes = [True, True, True, True]
+disabled_control_axes[AXIS_TO_TUNE] = False
+drone_manager = DroneManager(drone_type=DroneType.PROPS_OFF, show_error_graph=True, disabled_control_axes=disabled_control_axes)
+# SequentialAction(drone_manager, [TakeoffAction]).run_sequence()
 while True:
     start_loc = [0, 0, 0.5]
     end_loc = [0, 0, 0.5]
