@@ -2,8 +2,13 @@ from codrone_edu.drone import *
 import asyncio
 import logging
 from typing import Optional
+from matplotlib.figure import Figure
 import numpy as np
 import socket
+from simple_pid import PID
+import matplotlib.pyplot as plt
+import matplotlib.animation as animation
+from matplotlib import style, widgets
 
 # enum for managed flight state
 class ManagedFlightState(Enum):
@@ -16,15 +21,35 @@ class DroneType(Enum):
     PROPS_OFF = 1
     FULL_SIM = 2
 
+def yaw_clip(angle):
+    # deal with wrapping yaw angle around 360˚
+    if angle > 0:
+        if angle > 180:
+            return angle - 360
+    else:
+        if angle < -180:
+            return angle + 360
+    return angle
+
 class DroneManager:
     update_frequency = 10 # Hz
     lerp_threshold = 0.15 # m
-    x_p_gain = 90
-    y_p_gain = 90
-    z_p_gain = 80
-    yaw_p_gain = 1
+    x_controller = PID(30, 0, 0, setpoint=0, output_limits=(-100, 100))
+    y_controller = PID(30, 0, 0, setpoint=0, output_limits=(-100, 100))
+    z_controller = PID(30, 0, 0, setpoint=0, output_limits=(-100, 100))
+    yaw_controller = PID(30, 0, 0, setpoint=0, output_limits=(-100, 100), error_map=yaw_clip)
+    @property
+    def target_pose(self):
+        return self._target_pose
+    @target_pose.setter
+    def target_pose(self, value):
+        self._target_pose = value
+        self.x_controller.setpoint = value[0]
+        self.y_controller.setpoint = value[1]
+        self.z_controller.setpoint = value[2]
+        self.yaw_controller.setpoint = value[3]
 
-    def __init__(self, event_loop: asyncio.AbstractEventLoop = asyncio.get_event_loop(), drone_type = DroneType.REAL):
+    def __init__(self, event_loop: asyncio.AbstractEventLoop = asyncio.get_event_loop(), drone_type = DroneType.REAL, show_error_graph = False):
         # set up drone
         self.raw_drone: Drone = Drone()
         self.drone_type = drone_type
@@ -40,10 +65,14 @@ class DroneManager:
         # set up drone state
         self.drone_pose: np.ndarray = np.array([0, 0, 0, 0]) # x, y, z, yaw
         self.target_pose: np.ndarray = np.array([0, 0, 0, 0])
+        self.current_output: np.ndarray = np.array([0, 0, 0, 0])
         self.managed_flight_state: ManagedFlightState = ManagedFlightState.LANDED
         # set up update loop
         self.event_loop = event_loop
-        self.event_loop.create_task(self.start_update_loop())
+        asyncio.ensure_future(self.start_update_loop(),loop=self.event_loop)
+        asyncio.ensure_future(self.animate_plot(), loop=self.event_loop)
+        
+        self.show_error_graph = show_error_graph
 
     async def takeoff(self, altitude=1):
         self.raw_drone.takeoff() # blocks
@@ -68,15 +97,12 @@ class DroneManager:
             self.drone_pose = np.array([drone_state[16], drone_state[17], drone_state[18], drone_state[14]])
         if self.drone_type in [DroneType.REAL]:
             # calculate gains
-            x_gain = (self.target_pose[0]-self.drone_pose[0])*self.x_p_gain
-            y_gain = (self.target_pose[1]-self.drone_pose[1])*self.y_p_gain
-            z_gain = (self.target_pose[2]-self.drone_pose[2])*self.z_p_gain
-            yaw_gain = (self.target_pose[3]-self.drone_pose[3])*self.yaw_p_gain
-            # constrain gains to within 100
-            x_gain = np.clip(x_gain, -100, 100)
-            y_gain = np.clip(y_gain, -100, 100)
-            z_gain = np.clip(z_gain, -100, 100)
-            yaw_gain = np.clip(yaw_gain, -100, 100)
+            x_gain = self.x_controller(self.drone_pose[0])
+            y_gain = self.y_controller(self.drone_pose[1])
+            z_gain = self.z_controller(self.drone_pose[2])
+            yaw_gain = self.yaw_controller(self.drone_pose[3])
+
+            self.current_output = np.array([x_gain, y_gain, z_gain, yaw_gain])
             # set gains
             self.raw_drone.set_pitch(x_gain)
             self.raw_drone.set_roll(-y_gain) # roll is negative for some reason
@@ -85,7 +111,38 @@ class DroneManager:
             self.raw_drone.move()
             logging.debug(f"Drone polled, pose now {np.array2string(self.drone_pose, precision=3)} (target {np.array2string(self.target_pose)}, error {np.linalg.norm(self.drone_pose[:3] - self.target_pose[:3])})")
             logging.debug(f"Drone gains: x {x_gain}, y {y_gain}, z {z_gain}, yaw {yaw_gain}")
-        # TODO: Constantly set absolute location to target if needed
+
+    def render_plot(self, ax, target, current, output, title):
+        error = target - current
+        ax.clear()
+        ax.plot(error, 'r', label='Error')
+        ax.plot(target, 'g', label='Target')
+        ax.plot(current, 'b', label='Current')
+        ax.plot(output, 'y', label='Output')
+        ax.legend(loc='upper left')
+        ax.set_title(title)
+
+    async def animate_plot(self):
+        style.use('fivethirtyeight')
+        fig = plt.figure()
+        ax1 = fig.add_subplot(2, 2, 1)
+        ax2 = fig.add_subplot(2, 2, 2)
+        ax3 = fig.add_subplot(2, 2, 3)
+        ax4 = fig.add_subplot(2, 2, 4)
+
+        def animate(i):
+            self.render_plot(ax1, self.target_pose[0], self.drone_pose[0], self.current_output[0], 'X')
+            self.render_plot(ax2, self.target_pose[1], self.drone_pose[1], self.current_output[1], 'Y')
+            self.render_plot(ax3, self.target_pose[2], self.drone_pose[2], self.current_output[2], 'Z')
+            self.render_plot(ax4, self.target_pose[3], self.drone_pose[3], self.current_output[3], 'Yaw')
+
+        ani = animation.FuncAnimation(fig, animate, interval=1000/self.update_frequency)
+        plt.show(block=False)
+
+        while True:
+            await asyncio.sleep(1/self.update_frequency)
+            fig.canvas.draw()
+        
 
     async def go_to_abs(self, x: Optional[float], y: Optional[float], z: Optional[float], yaw: Optional[float] = None):
         # None means don't change that value

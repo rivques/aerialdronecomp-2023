@@ -1,2 +1,4 @@
 codrone_edu
 numpy
+simple-pid
+matplotlib
