@@ -38,10 +38,10 @@ class DroneManager:
     gain_history_length = 5 # seconds
     lerp_threshold = 0.15 # m
     pid_controllers = [
-        PID(30, 0, 0, setpoint=0, output_limits=(-100, 100)), # x
-        PID(30, 0, 0, setpoint=0, output_limits=(-100, 100)), # y
-        PID(30, 0, 0, setpoint=0, output_limits=(-100, 100)), # z
-        PID(30, 0, 0, setpoint=0, output_limits=(-100, 100), error_map=yaw_clip) # yaw
+        PID(50, 5, 0, setpoint=0, output_limits=(-100, 100)), # x
+        PID(50, 5, 0, setpoint=0, output_limits=(-100, 100)), # y
+        PID(120, 5, 0, setpoint=0, output_limits=(-100, 100)), # z
+        PID(1, 0, 0, setpoint=0, output_limits=(-100, 100), error_map=yaw_clip) # yaw
     ]
 
     _target_pose = np.array([0, 0, 0, 0])
@@ -142,12 +142,12 @@ class DroneManager:
         error = target - current
         time_now = time.monotonic()
         
-        history = np.roll(self.error_history[axis_index], -1, axis=1)
-        history[0, -1] = time_now
-        history[1, -1] = error
-        history[2, -1] = target
-        history[3, -1] = current
-        history[4, -1] = output
+        history = np.roll(self.error_history[axis_index], 1, axis=1)
+        history[0, 0] = time_now
+        history[1, 0] = error
+        history[2, 0] = target
+        history[3, 0] = current
+        history[4, 0] = output/100 # scale output to [-1, 1] for graphing
         ax.clear()
         ax.plot(time_now - history[0], history[1], label='error')
         ax.plot(time_now - history[0], history[2], label='target')

@@ -39,6 +39,15 @@ class TakeoffAction(Action):
     async def loop(self, drone_manager: DroneManager) -> bool:
         return True
 
+class WaitAction(Action):
+    def __init__(self, wait_time=1.0) -> None:
+        self.wait_time = wait_time
+        super().__init__()
+    async def setup(self, drone_manager: DroneManager):
+        await asyncio.sleep(self.wait_time)
+    async def loop(self, drone_manager: DroneManager) -> bool:
+        return True
+
 class SequentialAction(Action):
     def __init__(self, drone_manager: Optional[DroneManager], actions: List[Action], ehs: ErrorHandlingStrategy = ErrorHandlingStrategy.RAISE, event_loop: asyncio.AbstractEventLoop = asyncio.get_event_loop()):
         self.drone_manager = drone_manager
