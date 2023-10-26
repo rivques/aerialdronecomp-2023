@@ -69,7 +69,7 @@ class DroneManager:
                 self.pid_controllers[i].set_auto_mode(False, last_output=0)
                 self.current_output[i] = 0
 
-    def __init__(self, event_loop: asyncio.AbstractEventLoop = asyncio.get_event_loop(), drone_type = DroneType.REAL, show_error_graph = False, disabled_control_axes = [False, False, False, False]):
+    def __init__(self, event_loop: asyncio.AbstractEventLoop = asyncio.get_event_loop(), drone_type = DroneType.REAL, show_error_graph = False, disabled_control_axes = [False, False, False, False], parent_name = None):
         # set up drone
         self.raw_drone: Drone = Drone()
         self.drone_type = drone_type
@@ -89,20 +89,37 @@ class DroneManager:
         self.managed_flight_state: ManagedFlightState = ManagedFlightState.LANDED
         # set up update loop
         self.event_loop = event_loop
-        asyncio.ensure_future(self.start_update_loop(),loop=self.event_loop)
+        self.drone_update_loop = asyncio.ensure_future(self.start_update_loop(),loop=self.event_loop)
 
         self.show_error_graph = show_error_graph
         if show_error_graph:
+            logging.info("render process starting...")
             self.time_since_history_update = 0
             self.error_history_queue = multiprocessing.Queue()
             self.render_process = multiprocessing.Process(target=DroneManager.animate_plot, daemon=True, args=(self.error_history_queue, self.graph_update_frequency*self.error_history_length, self.graph_update_frequency)) # kill the GUI thread on exit
             # a 3d array of [time, error, target, current, output] for each axis with room for gain_history_length seconds of data with axes as first dimension
             self.error_history = np.zeros((4, 5, self.error_history_length * self.graph_update_frequency)) # only touched by render thread
-            self.render_process.start()
+            try:
+                self.render_process.start()
+            except RuntimeError:
+                logging.fatal("Render process failed to start. Make sure you've properly `if __name__ == '__main__':`ed your code.")
+                self.close()
 
         self.disabled_control_axes = disabled_control_axes
 
         self.last_control_loop_time = time.monotonic()
+
+    def close(self):
+        try:
+            self.drone_update_loop.cancel()
+        except AttributeError:
+            pass
+        self.raw_drone.close()
+        if self.show_error_graph:
+            try:
+                self.render_process.terminate()
+            except AttributeError:
+                pass
 
     async def takeoff(self, altitude=1):
         self.raw_drone.takeoff() # blocks
@@ -161,19 +178,19 @@ class DroneManager:
 
         logging.debug(f"Drone polled, pose now {np.array2string(self.drone_pose, precision=3)} (target {np.array2string(self.target_pose)}, error {np.linalg.norm(self.drone_pose[:3] - self.target_pose[:3])})")
         logging.debug(f"Drone gains: x {self.current_output[0]}, y {self.current_output[1]}, z {self.current_output[2]}, yaw {self.current_output[3]}")
-        logging.info(f"Control loop took {seconds_per_loop*1000:.3f} ms ({1/seconds_per_loop:.1f} Hz)")
-        if 1/seconds_per_loop < 40:
-            logging.warn(f"Control loop took {seconds_per_loop*1000:.3f} ms ({1/seconds_per_loop:.1f} Hz)!!")
+        logging.debug(f"Control loop took {seconds_per_loop*1000:.3f} ms ({1/seconds_per_loop:.1f} Hz)")
+        if 1/seconds_per_loop < self.control_frequency/1.5:
+            logging.warn(f"Control loop took {seconds_per_loop*1000:.3f} ms ({1/seconds_per_loop:.1f} Hz) (target {self.control_frequency} Hz, alarm at {self.control_frequency/1.5:.1f} Hz). Is something loading the CPU? ")
 
     def render_plot(ax: Axes, axis_index, title, error_history):
         history = np.moveaxis(error_history, 0, -1)[axis_index]
         # print(f"Rendering plot for {title} (history: {np.array2string(history, precision=2)}) (axis index {axis_index})")
         time_now = time.monotonic()
         ax.clear()
-        ax.plot(time_now - history[0], history[1], label='error')
-        ax.plot(time_now - history[0], history[2], label='target')
-        ax.plot(time_now - history[0], history[3], label='current')
-        ax.plot(time_now - history[0], history[4], label='output')
+        ax.plot(history[0], history[1], label='error')
+        ax.plot(history[0], history[2], label='target')
+        ax.plot(history[0], history[3], label='current')
+        ax.plot(history[0], history[4], label='output')
         ax.legend(loc='upper left')
         ax.set_title(title)
 
@@ -195,8 +212,8 @@ class DroneManager:
             # pull some history off the plot
             history_frame = error_history_queue.get()
             # print(f"Got history frame {np.array2string(history_frame, precision=2)}")
-            holder.error_history = np.roll(holder.error_history, -1, axis=0)
-            holder.error_history[-1] = history_frame
+            holder.error_history = np.roll(holder.error_history, 1, axis=0)
+            holder.error_history[0] = history_frame
             # logging.debug(f"Error history: {self.error_history}")
             # if axis_index == 2:
                 # logging.debug(f"Target history: {self.error_history[axis_index][2]}")
