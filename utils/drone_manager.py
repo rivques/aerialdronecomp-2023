@@ -10,6 +10,8 @@ from simple_pid import PID
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 from matplotlib import style, widgets
+import threading
+import queue
 
 # enum for managed flight state
 class ManagedFlightState(Enum):
@@ -90,10 +92,12 @@ class DroneManager:
         if show_error_graph:
             asyncio.ensure_future(self.animate_plot(), loop=self.event_loop)
             # a 3d array of [time, error, target, current, output] for each axis with room for gain_history_length seconds of data with axes as first dimension
-            self.error_history = np.zeros((4, 5, self.gain_history_length * self.control_frequency))
+            self.error_history = np.zeros((4, 5, self.gain_history_length * self.graph_update_frequency))
             print
         
-        self.disabled_control_axes = disabled_control_axes 
+        self.disabled_control_axes = disabled_control_axes
+
+        self.last_control_loop_time = time.monotonic()
 
     async def takeoff(self, altitude=1):
         self.raw_drone.takeoff() # blocks
@@ -131,23 +135,32 @@ class DroneManager:
             self.raw_drone.set_throttle(self.current_output[2])
             self.raw_drone.set_yaw(self.current_output[3])
             self.raw_drone.move()
+
+        seconds_per_loop = time.monotonic() - self.last_control_loop_time
+        self.last_control_loop_time = time.monotonic()
         logging.debug(f"Drone polled, pose now {np.array2string(self.drone_pose, precision=3)} (target {np.array2string(self.target_pose)}, error {np.linalg.norm(self.drone_pose[:3] - self.target_pose[:3])})")
         logging.debug(f"Drone gains: x {self.current_output[0]}, y {self.current_output[1]}, z {self.current_output[2]}, yaw {self.current_output[3]}")
+        logging.debug(f"Control loop took {seconds_per_loop*1000:.3f} ms ({1/seconds_per_loop:.1f} Hz)")
+        if 1/seconds_per_loop < 40:
+            logging.warn(f"Control loop took {seconds_per_loop*1000:.3f} ms ({1/seconds_per_loop:.1f} Hz)")
 
     def render_plot(self, ax: Axes, axis_index, title):
         target = self.target_pose[axis_index]
         current = self.drone_pose[axis_index]
         output = self.current_output[axis_index]
-        controller = self.pid_controllers[axis_index]
+        # controller = self.pid_controllers[axis_index]
         error = target - current
         time_now = time.monotonic()
+        # if axis_index == 2:
+            # logging.debug(f"Target history: {self.error_history[axis_index][2]}")
         
-        history = np.roll(self.error_history[axis_index], 1, axis=1)
-        history[0, 0] = time_now
-        history[1, 0] = error
-        history[2, 0] = target
-        history[3, 0] = current
-        history[4, 0] = output/100 # scale output to [-1, 1] for graphing
+        history = np.roll(self.error_history[axis_index], -1, axis=1)
+        # logging.debug(f"history {axis_index} shape: {history.shape}")
+        history[0, -1] = time_now
+        history[1, -1] = error
+        history[2, -1] = target
+        history[3, -1] = current
+        history[4, -1] = output/100 # scale output to [-1, 1] for graphing
         ax.clear()
         ax.plot(time_now - history[0], history[1], label='error')
         ax.plot(time_now - history[0], history[2], label='target')
@@ -159,9 +172,8 @@ class DroneManager:
         return history
 
     async def animate_plot(self):
-        print("animating plot...")
         style.use('fivethirtyeight')
-        fig = plt.figure()
+        fig = plt.figure(dpi=150, figsize=(10, 6))
         ax1 = fig.add_subplot(2, 2, 1)
         ax2 = fig.add_subplot(2, 2, 2)
         ax3 = fig.add_subplot(2, 2, 3)
