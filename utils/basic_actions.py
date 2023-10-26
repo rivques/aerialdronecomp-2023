@@ -26,6 +26,18 @@ class GoToAction(Action):
     def __str__(self):
         return f"GoToAction({self.x}, {self.y}, {self.z})"
 
+class RelativeMotion(Action):
+    def __init__(self, x: Optional[float], y: Optional[float], z: Optional[float]):
+        self.x = x
+        self.y = y
+        self.z = z
+    async def setup(self, drone_manager: DroneManager):
+        await drone_manager.go_to_rel(self.x, self.y, self.z)
+    async def loop(self, drone_manager: DroneManager) -> bool:
+        return drone_manager.managed_flight_state == ManagedFlightState.IDLE
+    def __str__(self):
+        return f"RelativeMotionAction({self.x}, {self.y}, {self.z})"
+
 class LandAction(Action):
     async def setup(self, drone_manager: DroneManager):
         await drone_manager.land()
