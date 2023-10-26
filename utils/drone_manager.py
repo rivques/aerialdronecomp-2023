@@ -1,3 +1,4 @@
+import functools
 from codrone_edu.drone import *
 import asyncio
 import logging
@@ -10,7 +11,7 @@ from simple_pid import PID
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 from matplotlib import style, widgets
-import threading
+import multiprocessing
 import queue
 
 # enum for managed flight state
@@ -36,8 +37,8 @@ def yaw_clip(angle):
 
 class DroneManager:
     control_frequency = 50 # Hz
-    graph_update_frequency = 10 # Hz
-    gain_history_length = 5 # seconds
+    graph_update_frequency = 8 # Hz
+    error_history_length = 15 # seconds
     lerp_threshold = 0.15 # m
     pid_controllers = [
         PID(50, 5, 0, setpoint=0, output_limits=(-100, 100)), # x
@@ -89,12 +90,16 @@ class DroneManager:
         # set up update loop
         self.event_loop = event_loop
         asyncio.ensure_future(self.start_update_loop(),loop=self.event_loop)
+
+        self.show_error_graph = show_error_graph
         if show_error_graph:
-            asyncio.ensure_future(self.animate_plot(), loop=self.event_loop)
+            self.time_since_history_update = 0
+            self.error_history_queue = multiprocessing.Queue()
+            self.render_process = multiprocessing.Process(target=DroneManager.animate_plot, daemon=True, args=(self.error_history_queue, self.graph_update_frequency*self.error_history_length, self.graph_update_frequency)) # kill the GUI thread on exit
             # a 3d array of [time, error, target, current, output] for each axis with room for gain_history_length seconds of data with axes as first dimension
-            self.error_history = np.zeros((4, 5, self.gain_history_length * self.graph_update_frequency))
-            print
-        
+            self.error_history = np.zeros((4, 5, self.error_history_length * self.graph_update_frequency)) # only touched by render thread
+            self.render_process.start()
+
         self.disabled_control_axes = disabled_control_axes
 
         self.last_control_loop_time = time.monotonic()
@@ -136,31 +141,34 @@ class DroneManager:
             self.raw_drone.set_yaw(self.current_output[3])
             self.raw_drone.move()
 
-        seconds_per_loop = time.monotonic() - self.last_control_loop_time
-        self.last_control_loop_time = time.monotonic()
+        time_now = time.monotonic()
+        seconds_per_loop = time_now - self.last_control_loop_time
+        self.last_control_loop_time = time_now
+
+        if self.show_error_graph:
+            self.time_since_history_update += seconds_per_loop
+            if self.time_since_history_update > 1/self.graph_update_frequency:
+                self.time_since_history_update = 0
+                history_frame = np.zeros((4, 5))
+                history_frame[0] = np.array([time_now, self.target_pose[0], self.drone_pose[0], self.current_output[0], self.target_pose[0] - self.drone_pose[0]])
+                history_frame[1] = np.array([time_now, self.target_pose[1], self.drone_pose[1], self.current_output[1], self.target_pose[1] - self.drone_pose[1]])
+                history_frame[2] = np.array([time_now, self.target_pose[2], self.drone_pose[2], self.current_output[2], self.target_pose[2] - self.drone_pose[2]])
+                history_frame[3] = np.array([time_now, self.target_pose[3], self.drone_pose[3], self.current_output[3], self.target_pose[3] - self.drone_pose[3]])
+                try:
+                    self.error_history_queue.put_nowait(history_frame)
+                except queue.Full:
+                    pass
+
         logging.debug(f"Drone polled, pose now {np.array2string(self.drone_pose, precision=3)} (target {np.array2string(self.target_pose)}, error {np.linalg.norm(self.drone_pose[:3] - self.target_pose[:3])})")
         logging.debug(f"Drone gains: x {self.current_output[0]}, y {self.current_output[1]}, z {self.current_output[2]}, yaw {self.current_output[3]}")
-        logging.debug(f"Control loop took {seconds_per_loop*1000:.3f} ms ({1/seconds_per_loop:.1f} Hz)")
+        logging.info(f"Control loop took {seconds_per_loop*1000:.3f} ms ({1/seconds_per_loop:.1f} Hz)")
         if 1/seconds_per_loop < 40:
-            logging.warn(f"Control loop took {seconds_per_loop*1000:.3f} ms ({1/seconds_per_loop:.1f} Hz)")
+            logging.warn(f"Control loop took {seconds_per_loop*1000:.3f} ms ({1/seconds_per_loop:.1f} Hz)!!")
 
-    def render_plot(self, ax: Axes, axis_index, title):
-        target = self.target_pose[axis_index]
-        current = self.drone_pose[axis_index]
-        output = self.current_output[axis_index]
-        # controller = self.pid_controllers[axis_index]
-        error = target - current
+    def render_plot(ax: Axes, axis_index, title, error_history):
+        history = np.moveaxis(error_history, 0, -1)[axis_index]
+        # print(f"Rendering plot for {title} (history: {np.array2string(history, precision=2)}) (axis index {axis_index})")
         time_now = time.monotonic()
-        # if axis_index == 2:
-            # logging.debug(f"Target history: {self.error_history[axis_index][2]}")
-        
-        history = np.roll(self.error_history[axis_index], -1, axis=1)
-        # logging.debug(f"history {axis_index} shape: {history.shape}")
-        history[0, -1] = time_now
-        history[1, -1] = error
-        history[2, -1] = target
-        history[3, -1] = current
-        history[4, -1] = output/100 # scale output to [-1, 1] for graphing
         ax.clear()
         ax.plot(time_now - history[0], history[1], label='error')
         ax.plot(time_now - history[0], history[2], label='target')
@@ -168,10 +176,8 @@ class DroneManager:
         ax.plot(time_now - history[0], history[4], label='output')
         ax.legend(loc='upper left')
         ax.set_title(title)
-        
-        return history
 
-    async def animate_plot(self):
+    def animate_plot(error_history_queue: multiprocessing.Queue, history_length, graph_update_frequency):
         style.use('fivethirtyeight')
         fig = plt.figure(dpi=150, figsize=(10, 6))
         ax1 = fig.add_subplot(2, 2, 1)
@@ -179,18 +185,31 @@ class DroneManager:
         ax3 = fig.add_subplot(2, 2, 3)
         ax4 = fig.add_subplot(2, 2, 4)
 
-        def animate(i):
-            self.error_history[0] = self.render_plot(ax1, 0, "X")
-            self.error_history[1] = self.render_plot(ax2, 1, "Y")
-            self.error_history[2] = self.render_plot(ax3, 2, "Z")
-            self.error_history[3] = self.render_plot(ax4, 3, "Yaw")
+        class ErrorHistoryHolder:
+            error_history = np.zeros((history_length, 4, 5))
+        
+        holder = ErrorHistoryHolder() # interior mutability lets history be updated by the render thread
 
-        ani = animation.FuncAnimation(fig, animate, interval=1000/self.control_frequency) # hold on to this reference, or it will be garbage collected
-        plt.show(block=False)
-        print("plot shown")
-        while True:
-            await asyncio.sleep(1/self.graph_update_frequency)
-            plt.pause(0.001) # if this doesn't work: try plt.ion, plt.show, plt.pause(0.001), or finally kicking it off into another thread
+        def animate(i, holder):
+            # print("Animating!")
+            # pull some history off the plot
+            history_frame = error_history_queue.get()
+            # print(f"Got history frame {np.array2string(history_frame, precision=2)}")
+            holder.error_history = np.roll(holder.error_history, -1, axis=0)
+            holder.error_history[-1] = history_frame
+            # logging.debug(f"Error history: {self.error_history}")
+            # if axis_index == 2:
+                # logging.debug(f"Target history: {self.error_history[axis_index][2]}")
+
+            # TODO: hold onto the new history somewhere
+
+            DroneManager.render_plot(ax1, 0, "X", holder.error_history)
+            DroneManager.render_plot(ax2, 1, "Y", holder.error_history)
+            DroneManager.render_plot(ax3, 2, "Z", holder.error_history)
+            DroneManager.render_plot(ax4, 3, "Yaw", holder.error_history)
+
+        ani = animation.FuncAnimation(fig, functools.partial(animate, holder=holder), interval=1000/graph_update_frequency) # hold on to this reference, or it will be garbage collected
+        plt.show()
         
 
     async def go_to_abs(self, x: Optional[float], y: Optional[float], z: Optional[float], yaw: Optional[float] = None):
