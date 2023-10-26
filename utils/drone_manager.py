@@ -36,14 +36,14 @@ def yaw_clip(angle):
     return angle
 
 class DroneManager:
-    control_frequency = 50 # Hz
+    control_frequency = 15 # Hz
     graph_update_frequency = 8 # Hz
     error_history_length = 15 # seconds
     lerp_threshold = 0.15 # m
     pid_controllers = [
-        PID(50, 5, 0, setpoint=0, output_limits=(-100, 100)), # x
-        PID(50, 5, 0, setpoint=0, output_limits=(-100, 100)), # y
-        PID(120, 5, 0, setpoint=0, output_limits=(-100, 100)), # z
+        PID(70, 3, 3, setpoint=0, output_limits=(-100, 100)), # x
+        PID(70, 3, 3, setpoint=0, output_limits=(-100, 100)), # y
+        PID(150, 15, 1, setpoint=0, output_limits=(-100, 100)), # z
         PID(1, 0, 0, setpoint=0, output_limits=(-100, 100), error_map=yaw_clip) # yaw
     ]
 
@@ -95,7 +95,7 @@ class DroneManager:
         if show_error_graph:
             logging.info("render process starting...")
             self.time_since_history_update = 0
-            self.error_history_queue = multiprocessing.Queue()
+            self.error_history_queue = multiprocessing.Queue(maxsize=2)
             self.render_process = multiprocessing.Process(target=DroneManager.animate_plot, daemon=True, args=(self.error_history_queue, self.graph_update_frequency*self.error_history_length, self.graph_update_frequency)) # kill the GUI thread on exit
             # a 3d array of [time, error, target, current, output] for each axis with room for gain_history_length seconds of data with axes as first dimension
             self.error_history = np.zeros((4, 5, self.error_history_length * self.graph_update_frequency)) # only touched by render thread
@@ -132,10 +132,9 @@ class DroneManager:
     
     async def start_update_loop(self):
         while True:
-            await asyncio.sleep(1/self.control_frequency)
-            self.poll_drone()
+            await self.poll_drone()
     
-    def poll_drone(self):
+    async def poll_drone(self):
         # drone state docs at https://docs.robolink.com/docs/codrone-edu/python/Sensors/24-get_sensor_data
         if self.drone_type in [DroneType.FULL_SIM]:
             self.drone_pose = self.target_pose
@@ -167,10 +166,10 @@ class DroneManager:
             if self.time_since_history_update > 1/self.graph_update_frequency:
                 self.time_since_history_update = 0
                 history_frame = np.zeros((4, 5))
-                history_frame[0] = np.array([time_now, self.target_pose[0], self.drone_pose[0], self.current_output[0], self.target_pose[0] - self.drone_pose[0]])
-                history_frame[1] = np.array([time_now, self.target_pose[1], self.drone_pose[1], self.current_output[1], self.target_pose[1] - self.drone_pose[1]])
-                history_frame[2] = np.array([time_now, self.target_pose[2], self.drone_pose[2], self.current_output[2], self.target_pose[2] - self.drone_pose[2]])
-                history_frame[3] = np.array([time_now, self.target_pose[3], self.drone_pose[3], self.current_output[3], self.target_pose[3] - self.drone_pose[3]])
+                history_frame[0] = np.array([time_now, self.target_pose[0], self.drone_pose[0], self.current_output[0]/100, self.target_pose[0] - self.drone_pose[0]])
+                history_frame[1] = np.array([time_now, self.target_pose[1], self.drone_pose[1], self.current_output[1]/100, self.target_pose[1] - self.drone_pose[1]])
+                history_frame[2] = np.array([time_now, self.target_pose[2], self.drone_pose[2], self.current_output[2]/100, self.target_pose[2] - self.drone_pose[2]])
+                history_frame[3] = np.array([time_now, self.target_pose[3], self.drone_pose[3], self.current_output[3]/100, self.target_pose[3] - self.drone_pose[3]])
                 try:
                     self.error_history_queue.put_nowait(history_frame)
                 except queue.Full:
@@ -181,16 +180,18 @@ class DroneManager:
         logging.debug(f"Control loop took {seconds_per_loop*1000:.3f} ms ({1/seconds_per_loop:.1f} Hz)")
         if 1/seconds_per_loop < self.control_frequency/1.5:
             logging.warn(f"Control loop took {seconds_per_loop*1000:.3f} ms ({1/seconds_per_loop:.1f} Hz) (target {self.control_frequency} Hz, alarm at {self.control_frequency/1.5:.1f} Hz). Is something loading the CPU? ")
+        
+        await asyncio.sleep(max(0, 1/self.control_frequency - seconds_per_loop))
 
     def render_plot(ax: Axes, axis_index, title, error_history):
         history = np.moveaxis(error_history, 0, -1)[axis_index]
         # print(f"Rendering plot for {title} (history: {np.array2string(history, precision=2)}) (axis index {axis_index})")
         time_now = time.monotonic()
         ax.clear()
-        ax.plot(history[0], history[1], label='error')
-        ax.plot(history[0], history[2], label='target')
-        ax.plot(history[0], history[3], label='current')
-        ax.plot(history[0], history[4], label='output')
+        ax.plot(history[0], history[1], label='target')
+        ax.plot(history[0], history[2], label='current')
+        ax.plot(history[0], history[3], label='output')
+        ax.plot(history[0], history[4], label='error')
         ax.legend(loc='upper left')
         ax.set_title(title)
 

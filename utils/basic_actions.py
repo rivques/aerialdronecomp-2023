@@ -63,6 +63,7 @@ class SequentialAction(Action):
             if self.ehs == ErrorHandlingStrategy.RAISE:
                 raise e
             elif self.ehs == ErrorHandlingStrategy.LAND:
+                logging.info("Error thrown, landing...")
                 self.drone_manager.raw_drone.land()
                 raise e
             elif self.ehs == ErrorHandlingStrategy.ESTOP:
@@ -86,6 +87,7 @@ class SequentialAction(Action):
                 if self.ehs == ErrorHandlingStrategy.RAISE:
                     raise e
                 elif self.ehs == ErrorHandlingStrategy.LAND:
+                    logging.info("Error thrown, landing...")
                     await self.drone_manager.land()
                     return
                 elif self.ehs == ErrorHandlingStrategy.ESTOP:
