@@ -28,15 +28,18 @@ class ErrorHandlingStrategy(Enum):
     BREAK = 4
 
 class GoToAction(Action):
-    def __init__(self, x: Optional[float], y: Optional[float], z: Optional[float]):
+    def __init__(self, x: Optional[float], y: Optional[float], z: Optional[float], name=None):
         self.x = x
-        self.y = y
+        self.y = ye
         self.z = z
+        self.name=name
     async def setup(self, drone_manager: DroneManager):
         await drone_manager.go_to_abs(self.x, self.y, self.z)
     async def loop(self, drone_manager: DroneManager) -> bool:
         return drone_manager.managed_flight_state == ManagedFlightState.IDLE
     def __str__(self):
+        if self.name is not None:
+            return self.name
         x_str = 'None' if self.x is None else f"{self.x:.3f}"
         y_str = 'None' if self.y is None else f"{self.y:.3f}"
         z_str = 'None' if self.z is None else f"{self.z:.3f}"

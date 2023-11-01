@@ -41,10 +41,10 @@ class DroneManager:
     error_history_length = 15 # seconds
     lerp_threshold = 0.15 # m
     pid_controllers = [
-        PID(70, 3, 3, setpoint=0, output_limits=(-100, 100)), # x
-        PID(70, 3, 3, setpoint=0, output_limits=(-100, 100)), # y
+        PID(70, 4, 3, setpoint=0, output_limits=(-100, 100)), # x
+        PID(70, 4, 3, setpoint=0, output_limits=(-100, 100)), # y
         PID(150, 15, 1, setpoint=0, output_limits=(-100, 100)), # z
-        PID(1, 0, 0, setpoint=0, output_limits=(-100, 100), error_map=yaw_clip) # yaw
+        PID(2, 0, 0, setpoint=0, output_limits=(-100, 100), error_map=yaw_clip) # yaw
     ]
 
     _target_pose = np.array([0, 0, 0, 0])
@@ -127,6 +127,8 @@ class DroneManager:
         self.raw_drone.takeoff() # blocks
         self.ignore_next_loop_warning()
         self.target_pose = np.array([0, 0, 1, 0])
+        for controller in self.pid_controllers:
+            controller.reset()
     
     async def land(self):
         self.raw_drone.land() # blocks
