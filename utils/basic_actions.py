@@ -26,7 +26,7 @@ class GoToAction(Action):
     def __str__(self):
         return f"GoToAction({self.x}, {self.y}, {self.z})"
 
-class RelativeMotion(Action):
+class RelativeMotionAction(Action):
     def __init__(self, x: Optional[float], y: Optional[float], z: Optional[float]):
         self.x = x
         self.y = y
@@ -114,3 +114,7 @@ class SequentialAction(Action):
     
     async def loop(self):
         return True # it all happens in setup
+    
+    def __str__(self):
+        contents = ", ".join([str(action) for action in self.actions])
+        return f"SequentialAction({contents})"

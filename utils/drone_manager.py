@@ -87,6 +87,7 @@ class DroneManager:
         self.target_pose: np.ndarray = np.array([0, 0, 0, 0])
         self.current_output: np.ndarray = np.array([0, 0, 0, 0])
         self.managed_flight_state: ManagedFlightState = ManagedFlightState.LANDED
+        self.last_colors = "Unknown"
         # set up update loop
         self.event_loop = event_loop
         self.drone_update_loop = asyncio.ensure_future(self.start_update_loop(),loop=self.event_loop)
@@ -254,4 +255,6 @@ class DroneManager:
         await self.go_to_abs(target_x, target_y, target_z)
 
     def get_colors(self):
-        return self.raw_drone.get_colors()
+        colors = self.raw_drone.get_colors()
+        self.last_colors = colors.copy()
+        return colors

@@ -1,3 +1,4 @@
+import asyncio
 from utils.drone_manager import DroneManager
 # abstract class
 class Action:
@@ -11,3 +12,8 @@ class Action:
     
     def __str__(self):
         return self.__class__.__name__
+    
+    def run_sequence(self):
+        event_loop = asyncio.get_event_loop()
+        seqtask = event_loop.create_task(self.setup())
+        event_loop.run_until_complete(seqtask)
