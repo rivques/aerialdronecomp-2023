@@ -75,7 +75,7 @@ class DroneManager:
         self.drone_type = drone_type
         if drone_type in [DroneType.REAL, DroneType.PROPS_OFF]:
             self.raw_drone.pair()
-            self.raw_drone.set_drone_LED(255, 255, 255, 255)
+            self.raw_drone.set_drone_LED(255, 255, 255, 100)
             # calibrate sensors
             self.raw_drone.set_initial_pressure()
             self.raw_drone.reset_sensor()
@@ -87,7 +87,8 @@ class DroneManager:
         self.target_pose: np.ndarray = np.array([0, 0, 0, 0])
         self.current_output: np.ndarray = np.array([0, 0, 0, 0])
         self.managed_flight_state: ManagedFlightState = ManagedFlightState.LANDED
-        self.last_colors = "Unknown"
+        self.last_colors = ["Unknown", "Unknown"]
+        self.ignore_next_loop_warning_flag = False
         # set up update loop
         self.event_loop = event_loop
         self.drone_update_loop = asyncio.ensure_future(self.start_update_loop(),loop=self.event_loop)
@@ -124,10 +125,12 @@ class DroneManager:
 
     async def takeoff(self, altitude=1):
         self.raw_drone.takeoff() # blocks
+        self.ignore_next_loop_warning()
         self.target_pose = np.array([0, 0, 1, 0])
     
     async def land(self):
         self.raw_drone.land() # blocks
+        self.ignore_next_loop_warning()
         self.target_pose[2] = 0
         self.managed_flight_state = ManagedFlightState.LANDED
     
@@ -180,7 +183,10 @@ class DroneManager:
         logging.debug(f"Drone gains: x {self.current_output[0]}, y {self.current_output[1]}, z {self.current_output[2]}, yaw {self.current_output[3]}")
         logging.debug(f"Control loop took {seconds_per_loop*1000:.3f} ms ({1/seconds_per_loop:.1f} Hz)")
         if 1/seconds_per_loop < self.control_frequency/1.5:
-            logging.warn(f"Control loop took {seconds_per_loop*1000:.3f} ms ({1/seconds_per_loop:.1f} Hz) (target {self.control_frequency} Hz, alarm at {self.control_frequency/1.5:.1f} Hz). Is something loading the CPU? ")
+            if self.ignore_next_loop_warning_flag:
+                self.ignore_next_loop_warning_flag = False
+            else:
+                logging.warn(f"Control loop took {seconds_per_loop*1000:.3f} ms ({1/seconds_per_loop:.1f} Hz) (target {self.control_frequency} Hz, alarm at {self.control_frequency/1.5:.1f} Hz). Is something loading the CPU? ")
         
         await asyncio.sleep(max(0, 1/self.control_frequency - seconds_per_loop))
 
@@ -227,7 +233,7 @@ class DroneManager:
             DroneManager.render_plot(ax3, 2, "Z", holder.error_history)
             DroneManager.render_plot(ax4, 3, "Yaw", holder.error_history)
 
-        ani = animation.FuncAnimation(fig, functools.partial(animate, holder=holder), interval=1000/graph_update_frequency) # hold on to this reference, or it will be garbage collected
+        ani = animation.FuncAnimation(fig, functools.partial(animate, holder=holder), interval=1000/graph_update_frequency, save_count=10) # hold on to this reference, or it will be garbage collected
         plt.show()
         
 
@@ -254,7 +260,26 @@ class DroneManager:
 
         await self.go_to_abs(target_x, target_y, target_z)
 
-    def get_colors(self):
-        colors = self.raw_drone.get_colors()
-        self.last_colors = colors.copy()
-        return colors
+    def get_colors(self, set_led=True):
+        if self.drone_type not in [DroneType.FULL_SIM]:
+            colors = self.raw_drone.get_colors()
+            self.last_colors = colors.copy()
+            if set_led:
+                COLORNAME_TO_RGB = {
+                    "Red": (255, 0, 0),
+                    "Green": (0, 255, 0),
+                    "Blue": (0, 0, 255),
+                    "Yellow": (255, 255, 0),
+                    "Magenta": (255, 0, 255),
+                    "Cyan": (0, 255, 255),
+                    "White": (255, 255, 255),
+                    "Black": (0, 0, 0),
+                    "Unknown": (255, 255, 255),
+                }
+                self.raw_drone.set_drone_LED(*COLORNAME_TO_RGB[colors[0]], 100)
+            return colors
+        else:
+            return ["Red", "Red"]
+    def ignore_next_loop_warning(self):
+        # call this if you've blocked for a while and already know you've messed up the control loop timing
+        self.ignore_next_loop_warning_flag = True

@@ -1,4 +1,4 @@
-from typing import Optional, List
+from typing import Callable, Optional, List
 
 import numpy as np
 from utils.action import Action
@@ -6,6 +6,19 @@ from utils.drone_manager import DroneManager, ManagedFlightState
 import asyncio
 from enum import Enum
 import logging
+
+class ArbitraryCodeAction(Action):
+    def __init__(self, setup: Callable[[DroneManager], None], loop: Callable[[DroneManager], bool]=lambda dm: True):
+        self.setup_code = setup
+        self.loop_code = loop
+    async def setup(self, drone_manager: DroneManager):
+        self.setup_code(drone_manager)
+    async def loop(self, drone_manager: DroneManager) -> bool:
+        return self.loop_code(drone_manager)
+
+class ReadColorAndSetLEDAction(Action):
+    async def setup(self, drone_manager: DroneManager):
+        drone_manager.get_colors()
 
 class ErrorHandlingStrategy(Enum):
     RAISE = 0
@@ -24,7 +37,10 @@ class GoToAction(Action):
     async def loop(self, drone_manager: DroneManager) -> bool:
         return drone_manager.managed_flight_state == ManagedFlightState.IDLE
     def __str__(self):
-        return f"GoToAction({self.x}, {self.y}, {self.z})"
+        x_str = 'None' if self.x is None else f"{self.x:.3f}"
+        y_str = 'None' if self.y is None else f"{self.y:.3f}"
+        z_str = 'None' if self.z is None else f"{self.z:.3f}"
+        return f"GoToAction({x_str}, {y_str}, {z_str})"
 
 class RelativeMotionAction(Action):
     def __init__(self, x: Optional[float], y: Optional[float], z: Optional[float]):
@@ -46,7 +62,6 @@ class LandAction(Action):
 
 class TakeoffAction(Action):
     async def setup(self, drone_manager: DroneManager):
-        logging.info("Taking off...")
         await drone_manager.takeoff()
     async def loop(self, drone_manager: DroneManager) -> bool:
         return True

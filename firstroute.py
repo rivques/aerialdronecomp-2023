@@ -1,13 +1,18 @@
 from utils.drone_manager import DroneManager, DroneType
-from utils.basic_actions import SequentialAction, TakeoffAction, GoToAction, LandAction, ErrorHandlingStrategy, WaitAction
+from utils.basic_actions import ReadColorAndSetLEDAction, SequentialAction, TakeoffAction, GoToAction, LandAction, ErrorHandlingStrategy, WaitAction
 import utils.field_locations as fl
 import logging
-logging.basicConfig(level=logging.DEBUG)
+logging.basicConfig(level=logging.INFO)
 if __name__ == "__main__":
-    drone_manager = DroneManager(drone_type=DroneType.REAL, show_error_graph=False)
+    drone_manager = DroneManager(drone_type=DroneType.FULL_SIM, show_error_graph=False)
+
+    # wait for signal to take off
+    input("Drone ready, press enter to start!")
+    drone_manager.ignore_next_loop_warning()
 
     # route: take off, go through red arch, go through yellow keyhole, go through green keyhole, go through blue arch and land on mat 2
     SequentialAction(drone_manager, [
+        ReadColorAndSetLEDAction(),
         TakeoffAction(),
         GoToAction(0, 0, fl.red_arch[2]), # get to good altitude for arch
         WaitAction(2.5), # settle a bit
