@@ -30,7 +30,7 @@ class ErrorHandlingStrategy(Enum):
 class GoToAction(Action):
     def __init__(self, x: Optional[float], y: Optional[float], z: Optional[float], name=None):
         self.x = x
-        self.y = ye
+        self.y = y
         self.z = z
         self.name=name
     async def setup(self, drone_manager: DroneManager):
