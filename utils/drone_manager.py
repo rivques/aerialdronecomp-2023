@@ -83,6 +83,7 @@ class DroneManager:
             hostname = socket.gethostname()
             # self.raw_drone.controller_draw_string(3, 3, hostname)
         # set up drone state
+        self.old_raw_drone_pose: np.ndarray = np.array([0, 0, 0, 0])
         self.drone_pose: np.ndarray = np.array([0, 0, 0, 0]) # x, y, z, yaw
         self.target_pose: np.ndarray = np.array([0, 0, 0, 0])
         self.current_output: np.ndarray = np.array([0, 0, 0, 0])
@@ -123,10 +124,10 @@ class DroneManager:
             except AttributeError:
                 pass
 
-    async def takeoff(self, altitude=1):
+    async def takeoff(self):
         self.raw_drone.takeoff() # blocks
         self.ignore_next_loop_warning()
-        self.target_pose = np.array([0, 0, 1, 0])
+        self.target_pose = np.array([0, 0, 1, 0]) # the builtin takeoff function goes to 1 meter height
         for controller in self.pid_controllers:
             controller.reset()
     
@@ -146,7 +147,24 @@ class DroneManager:
             self.drone_pose = self.target_pose
         else:
             drone_state = self.raw_drone.get_sensor_data()
-            self.drone_pose = np.array([drone_state[16], drone_state[17], drone_state[18], drone_state[14]])
+            raw_drone_pose = np.array([drone_state[16], drone_state[17], drone_state[18], drone_state[14]])
+            # rotate the x and y by the yaw, because the optical sensor assumes it's always facing forward
+            # to get the yaw we're using, average the yaw from the last two frames
+            avg_yaw = np.average([self.old_raw_drone_pose[3], raw_drone_pose[3]])
+            yaw_rad = avg_yaw * np.pi / 180
+            yaw_cos = np.cos(yaw_rad)
+            yaw_sin = np.sin(yaw_rad)
+            # get the changes in the x and y axis: this is how much the drone has moved in its reference frame
+            raw_delta_x = raw_drone_pose[0] - self.old_raw_drone_pose[0]
+            raw_delta_y = raw_drone_pose[1] - self.old_raw_drone_pose[1]
+            # now rotate them into the global reference frame
+            self.drone_pose[0] += raw_delta_x * yaw_cos - raw_delta_y * yaw_sin
+            self.drone_pose[1] += raw_delta_x * yaw_sin + raw_delta_y * yaw_cos
+            # now the easy part: just directly translate the z and yaw, there's no roatation in those axes
+            self.drone_pose[2] = raw_drone_pose[2]
+            self.drone_pose[3] = raw_drone_pose[3]
+            # save the old raw pose for next time
+            self.old_raw_drone_pose = raw_drone_pose
 
         # calculate gains
         for i, disabled in enumerate(self.disabled_control_axes):

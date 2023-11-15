@@ -45,6 +45,16 @@ class GoToAction(Action):
         z_str = 'None' if self.z is None else f"{self.z:.3f}"
         return f"GoToAction({x_str}, {y_str}, {z_str})"
 
+class RotateAction(Action):
+    def __init__(self, angle: float):
+        self.angle = angle
+    async def setup(self, drone_manager: DroneManager):
+        await drone_manager.go_to_abs(None, None, None, self.angle)
+    async def loop(self, drone_manager: DroneManager) -> bool:
+        return drone_manager.managed_flight_state == ManagedFlightState.IDLE
+    def __str__(self):
+        return f"RotateAction({self.angle})"
+
 class RelativeMotionAction(Action):
     def __init__(self, x: Optional[float], y: Optional[float], z: Optional[float]):
         self.x = x
