@@ -165,6 +165,7 @@ class DroneManager:
             self.drone_pose[3] = raw_drone_pose[3]
             # save the old raw pose for next time
             self.old_raw_drone_pose = raw_drone_pose
+            logging.debug(f"Raw drone pose: {np.array2string(raw_drone_pose, precision=3)}, drone pose: {np.array2string(self.drone_pose, precision=3)}, yaw: {avg_yaw:.3f}")
 
         # calculate gains
         for i, disabled in enumerate(self.disabled_control_axes):
