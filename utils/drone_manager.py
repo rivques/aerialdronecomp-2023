@@ -54,8 +54,6 @@ class DroneManager:
     @target_pose.setter
     def target_pose(self, value):
         self._target_pose = value
-        for i in range(4):
-            self.pid_controllers[i].setpoint = value[i]
 
     _disabled_control_axes = [False, False, False, False]
     @property
@@ -158,20 +156,30 @@ class DroneManager:
             raw_delta_x = raw_drone_pose[0] - self.old_raw_drone_pose[0]
             raw_delta_y = raw_drone_pose[1] - self.old_raw_drone_pose[1]
             # now rotate them into the global reference frame
-            self.drone_pose[0] += raw_delta_x * yaw_cos - raw_delta_y * yaw_sin
-            self.drone_pose[1] += raw_delta_x * yaw_sin + raw_delta_y * yaw_cos
+            new_x = self.drone_pose[0] + raw_delta_x * yaw_cos - raw_delta_y * yaw_sin
+            new_y = self.drone_pose[1] + raw_delta_x * yaw_sin + raw_delta_y * yaw_cos
             # now the easy part: just directly translate the z and yaw, there's no roatation in those axes
-            self.drone_pose[2] = raw_drone_pose[2]
-            self.drone_pose[3] = raw_drone_pose[3]
+            new_z = raw_drone_pose[2]
+            new_yaw = raw_drone_pose[3]
+            self.drone_pose = np.array([new_x, new_y, new_z, new_yaw])
             # save the old raw pose for next time
             self.old_raw_drone_pose = raw_drone_pose
-            logging.debug(f"Raw drone pose: {np.array2string(raw_drone_pose, precision=3)}, drone pose: {np.array2string(self.drone_pose, precision=3)}, yaw: {avg_yaw:.3f}")
-
+            logging.debug(f"Raw drone pose: {np.array2string(raw_drone_pose, precision=3)}, drone pose: {np.array2string(self.drone_pose, precision=3)}, yaw: {avg_yaw:.3f}, deltax: {raw_delta_x:.3f}, yawtrig: {yaw_sin:.3f}, {yaw_cos:.3f}")
+        # rotate target into drone reference frame
+        yaw_rad = self.drone_pose[3] * np.pi / 180
+        target_yaw_cos = np.cos(-yaw_rad/2)
+        target_yaw_sin = np.sin(-yaw_rad/2)
+        rot_target_x = self.target_pose[0] * target_yaw_cos - self.target_pose[1] * target_yaw_sin
+        rot_target_y = self.target_pose[0] * target_yaw_sin + self.target_pose[1] * target_yaw_cos
+        rot_target = np.array([rot_target_x, rot_target_y, self.target_pose[2], self.target_pose[3]])
+        # TODO: To future me: This rotates in the wrong direction. Not sure yet if this is 180 off, or mirrored around the x axis, or something else. Need more testing.
+        # Also: NP arrays are immutable!!!
         # calculate gains
         for i, disabled in enumerate(self.disabled_control_axes):
             if disabled:
                 self.current_output[i] = 0
             else:
+                self.pid_controllers[i].setpoint = rot_target[i]
                 self.current_output[i] = self.pid_controllers[i](self.drone_pose[i])
 
         if self.drone_type in [DroneType.REAL]:
@@ -200,7 +208,7 @@ class DroneManager:
                 except queue.Full:
                     pass
 
-        logging.debug(f"Drone polled, pose now {np.array2string(self.drone_pose, precision=3)} (target {np.array2string(self.target_pose)}, error {np.linalg.norm(self.drone_pose[:3] - self.target_pose[:3])})")
+        logging.debug(f"Drone polled, pose now {np.array2string(self.drone_pose, precision=3)} (target {np.array2string(self.target_pose)}, rot_target {np.array2string(rot_target)}, error {np.linalg.norm(self.drone_pose[:3] - self.target_pose[:3])})")
         logging.debug(f"Drone gains: x {self.current_output[0]}, y {self.current_output[1]}, z {self.current_output[2]}, yaw {self.current_output[3]}")
         logging.debug(f"Control loop took {seconds_per_loop*1000:.3f} ms ({1/seconds_per_loop:.1f} Hz)")
         if 1/seconds_per_loop < self.control_frequency/1.5:

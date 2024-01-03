@@ -3,7 +3,7 @@ from utils.basic_actions import SequentialAction, TakeoffAction, GoToAction, Lan
 import logging
 logging.basicConfig(level=logging.DEBUG)
 if __name__ == "__main__":
-    drone_manager = DroneManager(drone_type=DroneType.REAL, show_error_graph=True)
+    drone_manager = DroneManager(drone_type=DroneType.REAL, show_error_graph=False)
     # wait for signal to take off
     input("Drone ready, press enter to start!")
     drone_manager.ignore_next_loop_warning()
