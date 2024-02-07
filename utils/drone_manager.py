@@ -164,7 +164,6 @@ class DroneManager:
             self.drone_pose = np.array([new_x, new_y, new_z, new_yaw])
             # save the old raw pose for next time
             self.old_raw_drone_pose = raw_drone_pose
-            logging.debug(f"Raw drone pose: {np.array2string(raw_drone_pose, precision=3)}, drone pose: {np.array2string(self.drone_pose, precision=3)}, yaw: {avg_yaw:.3f}, deltax: {raw_delta_x:.3f}, yawtrig: {yaw_sin:.3f}, {yaw_cos:.3f}")
         # rotate target into drone reference frame
         yaw_rad = self.drone_pose[3] * np.pi / 180
         target_yaw_cos = np.cos(-yaw_rad/2)
@@ -174,6 +173,7 @@ class DroneManager:
         rot_target = np.array([rot_target_x, rot_target_y, self.target_pose[2], self.target_pose[3]])
         # TODO: To future me: This rotates in the wrong direction. Not sure yet if this is 180 off, or mirrored around the x axis, or something else. Need more testing.
         # Also: NP arrays are immutable!!!
+        logging.debug(f"Raw drone pose: {np.array2string(raw_drone_pose, precision=3)}, drone pose: {np.array2string(self.drone_pose, precision=3)}, yaw: {avg_yaw:.3f}, deltax: {raw_delta_x:.3f}, yawtrig: {yaw_sin:.3f}, {yaw_cos:.3f}")
         # calculate gains
         for i, disabled in enumerate(self.disabled_control_axes):
             if disabled:
