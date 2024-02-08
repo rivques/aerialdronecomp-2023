@@ -264,22 +264,34 @@ class DroneManager:
 
     def get_colors(self, set_led=True):
         if self.drone_type not in [DroneType.FULL_SIM]:
-            colors = self.raw_drone.get_colors()
-            self.last_colors = colors.copy()
+            color_raw = [0, 0]
+            counter = 0
+            while color_raw[1] == 0 and counter < 16:
+                color_raw = self.raw_drone.get_color_data()
+                counter += 1
+                logging.debug(f"Color sensor read {color_raw} (counter {counter})")
+                time.sleep(0.25)
+            if counter >= 16:
+                logging.error("Color sensor failed to read")
+                if set_led:
+                    self.raw_drone.set_drone_LED(255, 0, 0, 100)
+                return "Red"
             if set_led:
-                COLORNAME_TO_RGB = {
-                    "Red": (255, 0, 0),
-                    "Green": (0, 255, 0),
-                    "Blue": (0, 0, 255),
-                    "Yellow": (255, 255, 0),
-                    "Magenta": (255, 0, 255),
-                    "Cyan": (0, 255, 255),
-                    "White": (255, 255, 255),
-                    "Black": (0, 0, 0),
-                    "Unknown": (255, 255, 255),
-                }
-                self.raw_drone.set_drone_LED(*COLORNAME_TO_RGB[colors[0]], 100)
-            return colors
+                # hue thresholding for red, green, blue
+                # hsv hue value is color_raw[1]
+                # every hue value is a color
+
+                if color_raw[1] > 300 or color_raw[1] < 60:
+                    self.raw_drone.set_drone_LED(255, 0, 0, 100)
+                    return "Red"
+                elif color_raw[1] > 60 and color_raw[1] < 180:
+                    self.raw_drone.set_drone_LED(0, 255, 0, 100)
+                    return "Green"
+                elif color_raw[1] > 180 and color_raw[1] < 300:
+                    self.raw_drone.set_drone_LED(0, 0, 255, 100)
+                    return "Blue"
+            
+            return color
         else:
             return ["Red", "Red"]
     def ignore_next_loop_warning(self):

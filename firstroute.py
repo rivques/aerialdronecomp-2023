@@ -4,7 +4,7 @@ import utils.field_locations as fl
 import logging
 logging.basicConfig(level=logging.INFO)
 if __name__ == "__main__":
-    drone_manager = DroneManager(drone_type=DroneType.REAL, show_error_graph=True)
+    drone_manager = DroneManager(drone_type=DroneType.REAL, show_error_graph=False)
 
     # wait for signal to take off
     input("Drone ready, press enter to start!")
@@ -12,7 +12,7 @@ if __name__ == "__main__":
 
     # route: take off, go through red arch, go through yellow keyhole, go through green keyhole, go through blue arch and land on mat 2
     SequentialAction(drone_manager, [
-        # ReadColorAndSetLEDAction(),
+        ReadColorAndSetLEDAction(),
         TakeoffAction(),
         GoToAction(0, 0, fl.red_arch[2], "ArchPrepareAlt"), # get to good altitude for arch
         WaitAction(2.5), # settle a bit

@@ -6,6 +6,10 @@ logging.basicConfig(level=logging.DEBUG)
 
 drone_manager = DroneManager(drone_type=DroneType.REAL, show_error_graph=False)
 while True:
-    colors = drone_manager.get_colors()
-    print(colors)
+    try:
+        colors = drone_manager.get_colors()
+    except TypeError:
+        pass
+    else:
+        print(colors)
     time.sleep(0.5)
