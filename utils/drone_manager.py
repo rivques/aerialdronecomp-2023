@@ -87,7 +87,7 @@ class DroneManager:
         self.target_pose: np.ndarray = np.array([0, 0, 0, 0])
         self.current_output: np.ndarray = np.array([0, 0, 0, 0])
         self.managed_flight_state: ManagedFlightState = ManagedFlightState.LANDED
-        self.last_colors = ["Unknown", "Unknown"]
+        self.last_color = "Unknowns"
         self.ignore_next_loop_warning_flag = False
         # set up update loop
         self.event_loop = event_loop
@@ -276,24 +276,24 @@ class DroneManager:
                 if set_led:
                     self.raw_drone.set_drone_LED(255, 0, 0, 100)
                 return "Red"
-            if set_led:
-                # hue thresholding for red, green, blue
-                # hsv hue value is color_raw[1]
-                # every hue value is a color
+            color = "Unknown"
 
-                if color_raw[1] > 300 or color_raw[1] < 60:
+            if color_raw[1] > 300 or color_raw[1] < 60:
+                color = "Red"
+                if set_led:
                     self.raw_drone.set_drone_LED(255, 0, 0, 100)
-                    return "Red"
-                elif color_raw[1] > 60 and color_raw[1] < 180:
+            elif color_raw[1] > 60 and color_raw[1] < 180:
+                color = "Green"
+                if set_led:
                     self.raw_drone.set_drone_LED(0, 255, 0, 100)
-                    return "Green"
-                elif color_raw[1] > 180 and color_raw[1] < 300:
+            elif color_raw[1] > 180 and color_raw[1] < 300:
+                color = "Blue"
+                if set_led:
                     self.raw_drone.set_drone_LED(0, 0, 255, 100)
-                    return "Blue"
-            
+            self.last_color = color
             return color
         else:
-            return ["Red", "Red"]
+            return "Red"
     def ignore_next_loop_warning(self):
         # call this if you've blocked for a while and already know you've messed up the control loop timing
         self.ignore_next_loop_warning_flag = True

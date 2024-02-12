@@ -1,3 +1,4 @@
+import time
 from typing import Callable, Optional, List
 
 import numpy as np
@@ -18,7 +19,7 @@ class ArbitraryCodeAction(Action):
 
 class ReadColorAndSetLEDAction(Action):
     async def setup(self, drone_manager: DroneManager):
-        drone_manager.get_colors()
+        logging.info(f"Color: {drone_manager.get_colors()}")
 
 class ErrorHandlingStrategy(Enum):
     RAISE = 0
@@ -28,14 +29,20 @@ class ErrorHandlingStrategy(Enum):
     BREAK = 4
 
 class GoToAction(Action):
-    def __init__(self, x: Optional[float], y: Optional[float], z: Optional[float], name=None):
+    def __init__(self, x: Optional[float], y: Optional[float], z: Optional[float], name=None, timeout=None):
         self.x = x
         self.y = y
         self.z = z
         self.name=name
+        self.timeout = timeout
     async def setup(self, drone_manager: DroneManager):
+        self.start_time = time.time()
         await drone_manager.go_to_abs(self.x, self.y, self.z)
     async def loop(self, drone_manager: DroneManager) -> bool:
+        logging.info(f"GoToAction loop: {time.time() - self.start_time}")
+        if self.timeout is not None and time.time() - self.start_time > self.timeout:
+            logging.warning(f"{self.name if self.name is not None else 'GoToAction'} timed out after {time.time()-self.start_time} seconds")
+            return True
         return drone_manager.managed_flight_state == ManagedFlightState.IDLE
     def __str__(self):
         if self.name is not None:
