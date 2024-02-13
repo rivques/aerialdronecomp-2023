@@ -19,7 +19,11 @@ if __name__ == "__main__":
         GoToAction(fl.in_to_m(48), fl.yellow_keyhole[1], None, "GoThroughArch", 2), # go through arch and align for keyhole on xy plane
         GoToAction(None, None, fl.yellow_keyhole[2],"YKeyholePrepareHeight", 5), #  get to right height for keyhole
         #WaitAction(1), # settle a bit
-        GoToAction(fl.green_keyhole[0], None, None,"GoThroughYKeyhole", 2), # go through keyhole and align for next keyhole
+        GoToAction(fl.green_keyhole[0], None, None,"GaoThroughYKeyhole", 2), # go through keyhole and align for next keyhole
+        GoToAction(None, None, fl.yellow_keyhole[2]+fl.keyhole_outer_dia,"YKeyholeLoopUp", 3), #  get above yellow keyhole 
+        GoToAction(fl.in_to_m(48), None, None, "YKeyholeLoopBack", 2), # go back over keyhole
+        GoToAction(None, None, fl.yellow_keyhole[2],"YKeyholeLoopDown", 3), #  get to right height for keyhole
+        GoToAction(fl.green_keyhole[0],None, None, "YKeyholeLoopThrough", 2), # go through keyhole and align for next keyhole
         GoToAction(None, fl.green_keyhole[1]-0.30, fl.green_keyhole[2],"GKeyholePrepareHeight",5), # get to correct height for yellow keyhole and get a bit closer
         #WaitAction(1), # settle a bit
         GoToAction(None, fl.green_keyhole[1]+0.30, None, "GoThroughGKeyhole",2),

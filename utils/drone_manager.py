@@ -126,14 +126,14 @@ class DroneManager:
     async def takeoff(self, altitude=1):
         self.raw_drone.takeoff() # blocks
         self.ignore_next_loop_warning()
-        self.target_pose = np.array([0, 0, 1, 0])
+        self.target_pose = np.insert(self.target_pose, 2, 1) # keep the rest of the pose but set the altitude (idx 2) to 1
         for controller in self.pid_controllers:
             controller.reset()
     
     async def land(self):
         self.raw_drone.land() # blocks
         self.ignore_next_loop_warning()
-        self.target_pose[2] = 0
+        self.target_pose = np.insert(self.target_pose, 2, 0) # keep the rest of the pose but set the altitude (idx 2) to 0
         self.managed_flight_state = ManagedFlightState.LANDED
     
     async def start_update_loop(self):
@@ -239,7 +239,7 @@ class DroneManager:
         plt.show()
         
 
-    async def go_to_abs(self, x: Optional[float], y: Optional[float], z: Optional[float], yaw: Optional[float] = None):
+    async def go_to_abs(self, x: Optional[float], y: Optional[float], z: Optional[float], yaw: Optional[float] = None, timeout: Optional[float] = None):
         # None means don't change that value
         target_x = x if x is not None else self.target_pose[0]
         target_y = y if y is not None else self.target_pose[1]
@@ -247,11 +247,17 @@ class DroneManager:
         target_yaw = yaw if yaw is not None else self.target_pose[3]
         self.target_pose = np.array([target_x, target_y, target_z, target_yaw])
 
+        if timeout is not None:
+            start_time = time.monotonic()
+
         self.managed_flight_state = ManagedFlightState.MOVING
         while True:
             await asyncio.sleep(1/self.control_frequency)
             # check if we're close enough to the target
             if np.linalg.norm(self.drone_pose[:3] - np.array([target_x, target_y, target_z])) < self.lerp_threshold:
+                break
+            if timeout is not None and time.monotonic() - start_time > timeout:
+                logging.warning(f"GoToAction timed out after {time.monotonic()-start_time} seconds")
                 break
         self.managed_flight_state = ManagedFlightState.IDLE
     
