@@ -1,6 +1,7 @@
 from utils.drone_manager import DroneManager, DroneType
-from utils.basic_actions import ReadColorAndSetLEDAction, SequentialAction, TakeoffAction, GoToAction, LandAction, ErrorHandlingStrategy, WaitAction
+from utils.basic_actions import ArbitraryCodeAction, ReadColorAndSetLEDAction, SequentialAction, TakeoffAction, GoToAction, LandAction, ErrorHandlingStrategy, WaitAction
 import utils.field_locations as fl
+import numpy as np
 import logging
 logging.basicConfig(level=logging.INFO)
 if __name__ == "__main__":
@@ -29,16 +30,4 @@ if __name__ == "__main__":
         #WaitAction(1), # settle a bit
         LandAction(),
         ReadColorAndSetLEDAction(),
-    ], ErrorHandlingStrategy.LAND).run_sequence()
-    if drone_manager.last_color == "Blue":
-        landing_loc = fl.blue_landing_pad
-    elif drone_manager.last_color == "Red":
-        landing_loc = fl.red_landing_pad
-    else:
-        landing_loc = fl.green_landing_pad
-    
-    SequentialAction(drone_manager, [
-        TakeoffAction(),
-        GoToAction(landing_loc[0], landing_loc[1], None, "GoToLanding", 5),
-        LandAction()
     ], ErrorHandlingStrategy.LAND).run_sequence()

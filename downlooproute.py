@@ -21,11 +21,10 @@ if __name__ == "__main__":
         GoToAction(None, None, fl.yellow_keyhole[2],"YKeyholePrepareHeight", 3), #  get to right height for keyhole
         #WaitAction(1), # settle a bit
         GoToAction(fl.yellow_keyhole[0]+fl.in_to_m(10), None, None,"GoThroughYKeyhole", 2), # go through keyhole and align for next keyhole
-        GoToAction(None, None, fl.yellow_keyhole[2]+fl.keyhole_outer_dia*0.6, "YKeyholeLoopUp", 3), #  get above yellow keyhole 
-        GoToAction(fl.yellow_keyhole[0]-fl.in_to_m(20), fl.yellow_keyhole[1]-0.1, None, "YKeyholeLoopBack", 2), # go back over keyhole
-        GoToAction(None, None, fl.yellow_keyhole[2]-0.05,"YKeyholeLoopDown", 3), #  get to right height for keyhole
+        GoToAction(fl.in_to_m(53), fl.yellow_keyhole[1]+0.5, fl.yellow_keyhole[2]-fl.keyhole_outer_dia*0.6, "YKeyholeLoopDown", 3), #  get above yellow keyhole 
+        GoToAction(fl.in_to_m(48), 0, fl.yellow_keyhole[2],"YKeyholeLoopUp", 3), #  get to right height for keyhole
         GoToAction(fl.green_keyhole[0],None, None, "YKeyholeLoopThrough", 2), # go through keyhole and align for next keyhole
-        GoToAction(None, fl.green_keyhole[1]-0.30, fl.green_keyhole[2],"GKeyholePrepareHeight",3), # get to correct height for yellow keyhole and get a bit closer
+        GoToAction(None, fl.green_keyhole[1]-0.30, fl.green_keyhole[2],"GKeyholePrepareHeight",4), # get to correct height for yellow keyhole and get a bit closer
         #WaitAction(1), # settle a bit
         GoToAction(None, fl.green_keyhole[1]+0.30, None, "GoThroughGKeyhole",2),
         GoToAction(None, None, fl.blue_arch[2], "BArchPrepareHeight",3), # prepare to go through blue arch

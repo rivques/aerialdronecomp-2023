@@ -97,7 +97,8 @@ class SequentialAction(Action):
             elif self.ehs == ErrorHandlingStrategy.LAND:
                 logging.info("Error thrown, landing...")
                 self.drone_manager.raw_drone.land()
-                raise e
+                logging.info(f"error: {e}, {type(e)}, {e.__traceback__}")
+                raise
             elif self.ehs == ErrorHandlingStrategy.ESTOP:
                 self.drone_manager.raw_drone.emergency_stop()
                 return

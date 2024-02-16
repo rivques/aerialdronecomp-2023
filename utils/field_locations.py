@@ -23,6 +23,6 @@ blue_arch = np.array([prog_mat_size[0]+prog_mat_size[1]/2, prog_mat_size[1]/2+in
 yellow_keyhole = np.array([in_to_m(72)+color_mat_size/2, -(-prog_mat_size[1]/2+in_to_m(24)), in_to_m(38)+keyhole_outer_dia/2])
 green_keyhole = np.array([prog_mat_size[0]+prog_mat_size[1]-in_to_m(36), prog_mat_size[1]/2, in_to_m(46)+keyhole_outer_dia/2])
 
-blue_landing_pad = mat_2+np.array([landing_pad_dia/2+color_mat_size/2, in_to_m(3), 0])
-red_landing_pad = mat_2+np.array([-(landing_pad_dia/2+color_mat_size/2), in_to_m(3), 0])
-green_landing_pad = mat_2+np.array([0, -color_mat_size, 0])
+blue_landing_pad = np.array([landing_pad_dia/2+color_mat_size/2, in_to_m(3), 0])
+red_landing_pad = np.array([-(landing_pad_dia/2+color_mat_size/2), in_to_m(3), 0])
+green_landing_pad = np.array([0, -color_mat_size, 0])
