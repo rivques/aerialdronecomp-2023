@@ -4,17 +4,15 @@ import asyncio
 import logging
 from typing import Optional
 from matplotlib.axes import Axes
-from matplotlib.figure import Figure
 import numpy as np
-import socket
 from simple_pid import PID
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
-from matplotlib import style, widgets
+from matplotlib import style
 import multiprocessing
 import queue
 
-# enum for managed flight state
+# used for communnication of when the drone has arrived at its target
 class ManagedFlightState(Enum):
     IDLE = 0
     MOVING = 2
@@ -26,7 +24,7 @@ class DroneType(Enum):
     FULL_SIM = 2
 
 def yaw_clip(angle):
-    # deal with wrapping yaw angle around 360˚
+    # deal with wrapping yaw angle around 360˚ for PID loop
     if angle > 0:
         if angle > 180:
             return angle - 360
@@ -55,7 +53,7 @@ class DroneManager:
     def target_pose(self, value):
         self._target_pose = value
         for i in range(4):
-            self.pid_controllers[i].setpoint = value[i]
+            self.pid_controllers[i].setpoint = value[i] # allow for updating setpoints by just setting target pose
 
     _disabled_control_axes = [False, False, False, False]
     @property
@@ -66,7 +64,7 @@ class DroneManager:
         self._disabled_control_axes = value
         for i, disabled in enumerate(self._disabled_control_axes):
             if disabled:
-                self.pid_controllers[i].set_auto_mode(False, last_output=0)
+                self.pid_controllers[i].set_auto_mode(False, last_output=0) # allow for disabling axes via property
                 self.current_output[i] = 0
 
     def __init__(self, event_loop: asyncio.AbstractEventLoop = asyncio.get_event_loop(), drone_type = DroneType.REAL, show_error_graph = False, disabled_control_axes = [False, False, False, False], parent_name = None):
@@ -79,9 +77,7 @@ class DroneManager:
             # calibrate sensors
             self.raw_drone.set_initial_pressure()
             self.raw_drone.reset_sensor()
-            # display ip address on controller screen:
-            hostname = socket.gethostname()
-            # self.raw_drone.controller_draw_string(3, 3, hostname)
+
         # set up drone state
         self.drone_pose: np.ndarray = np.array([0, 0, 0, 0]) # x, y, z, yaw
         self.target_pose: np.ndarray = np.array([0, 0, 0, 0])
@@ -123,7 +119,7 @@ class DroneManager:
             except AttributeError:
                 pass
 
-    async def takeoff(self, altitude=1):
+    async def takeoff(self):
         self.raw_drone.takeoff() # blocks
         self.ignore_next_loop_warning()
         self.target_pose = np.insert(self.target_pose, 2, 1) # keep the rest of the pose but set the altitude (idx 2) to 1
@@ -172,10 +168,10 @@ class DroneManager:
             if self.time_since_history_update > 1/self.graph_update_frequency:
                 self.time_since_history_update = 0
                 history_frame = np.zeros((4, 5))
-                history_frame[0] = np.array([time_now, self.target_pose[0], self.drone_pose[0], self.current_output[0]/100, self.target_pose[0] - self.drone_pose[0]])
-                history_frame[1] = np.array([time_now, self.target_pose[1], self.drone_pose[1], self.current_output[1]/100, self.target_pose[1] - self.drone_pose[1]])
-                history_frame[2] = np.array([time_now, self.target_pose[2], self.drone_pose[2], self.current_output[2]/100, self.target_pose[2] - self.drone_pose[2]])
-                history_frame[3] = np.array([time_now, self.target_pose[3], self.drone_pose[3], self.current_output[3]/100, self.target_pose[3] - self.drone_pose[3]])
+                history_frame[0] = np.array([time_now, self.target_pose[0], self.drone_pose[0], self.current_output[0]/100, self.target_pose[0] - self.drone_pose[0]]) # x
+                history_frame[1] = np.array([time_now, self.target_pose[1], self.drone_pose[1], self.current_output[1]/100, self.target_pose[1] - self.drone_pose[1]]) # y
+                history_frame[2] = np.array([time_now, self.target_pose[2], self.drone_pose[2], self.current_output[2]/100, self.target_pose[2] - self.drone_pose[2]]) # z
+                history_frame[3] = np.array([time_now, self.target_pose[3], self.drone_pose[3], self.current_output[3]/100, self.target_pose[3] - self.drone_pose[3]]) # yaw
                 try:
                     self.error_history_queue.put_nowait(history_frame)
                 except queue.Full:
@@ -245,6 +241,7 @@ class DroneManager:
         target_y = y if y is not None else self.target_pose[1]
         target_z = z if z is not None else self.target_pose[2]
         target_yaw = yaw if yaw is not None else self.target_pose[3]
+        
         self.target_pose = np.array([target_x, target_y, target_z, target_yaw])
 
         if timeout is not None:

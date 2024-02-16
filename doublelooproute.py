@@ -3,7 +3,9 @@ from utils.basic_actions import ReadColorAndSetLEDAction, SequentialAction, Take
 import utils.field_locations as fl
 import numpy as np
 import logging
+
 logging.basicConfig(level=logging.INFO)
+
 if __name__ == "__main__":
     drone_manager = DroneManager(drone_type=DroneType.REAL, show_error_graph=False)
 
@@ -11,9 +13,14 @@ if __name__ == "__main__":
     input("Drone ready, press enter to start!")
     drone_manager.ignore_next_loop_warning()
 
-    # route: take off, go through red arch, go through yellow keyhole, go through green keyhole, go through blue arch and land on mat 2
+    first_color = ""
+    def set_first_color(dm: DroneManager): # this is a bit ugly, but it works
+        global first_color
+        first_color = dm.last_color
+        
     SequentialAction(drone_manager, [
         ReadColorAndSetLEDAction(),
+        ArbitraryCodeAction(set_first_color),
         TakeoffAction(),
         GoToAction(0, 0, fl.red_arch[2], "ArchPrepareAlt", 4), # get to good altitude for arch
         #WaitAction(1), # settle a bit
@@ -37,12 +44,26 @@ if __name__ == "__main__":
         LandAction(),
         ReadColorAndSetLEDAction(),
     ], ErrorHandlingStrategy.LAND).run_sequence()
-    if drone_manager.last_color == "Blue":
-        landing_loc = fl.blue_landing_pad
-    elif drone_manager.last_color == "Red":
-        landing_loc = fl.red_landing_pad
+    logging.info(f"First color: {first_color}")
+    if first_color == drone_manager.last_color:
+        logging.warn(f"Drone did not change color, something went wrong!")
+        # take a guess at one of the colors that's not the first color
+        if first_color == "Blue":
+            logging.info("Guessing red landing pad")
+            landing_loc = fl.red_landing_pad
+        elif first_color == "Red":
+            logging.info("Guessing green landing pad")
+            landing_loc = fl.green_landing_pad
+        else:
+            logging.info("Guessing blue landing pad")
+            landing_loc = fl.blue_landing_pad
     else:
-        landing_loc = fl.green_landing_pad
+        if drone_manager.last_color == "Blue":
+            landing_loc = fl.blue_landing_pad
+        elif drone_manager.last_color == "Red":
+            landing_loc = fl.red_landing_pad
+        else:
+            landing_loc = fl.green_landing_pad
     
     logging.info(f"Drone now at: {np.array2string(drone_manager.drone_pose, 3)}" )
     
