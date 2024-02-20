@@ -17,7 +17,7 @@ if __name__ == "__main__":
     def set_first_color(dm: DroneManager): # this is a bit ugly, but it works
         global first_color
         first_color = dm.last_color
-        
+
     SequentialAction(drone_manager, [
         ReadColorAndSetLEDAction(),
         ArbitraryCodeAction(set_first_color),
@@ -33,9 +33,9 @@ if __name__ == "__main__":
         GoToAction(fl.green_keyhole[0],None, None, "YKeyholeLoopThrough", 2), # go through keyhole and align for next keyhole
         GoToAction(None, fl.green_keyhole[1]-0.30, fl.green_keyhole[2],"GKeyholePrepareHeight",4), # get to correct height for yellow keyhole and get a bit closer
         #WaitAction(1), # settle a bit
-        GoToAction(None, fl.green_keyhole[1]+0.30, None, "GoThroughGKeyhole",2),
-        GoToAction(fl.green_keyhole[0]-0.5, fl.green_keyhole[1], fl.green_keyhole[2]-fl.keyhole_outer_dia*0.7,"GKeyholeLoopDown",3), # get below green keyhole
-        GoToAction(fl.green_keyhole[0], fl.green_keyhole[1]-0.4, fl.green_keyhole[2],"GKeyholeLoopUp",3), # get to right height for green keyhole
+        GoToAction(None, fl.green_keyhole[1]+0.40, None, "GoThroughGKeyhole",2),
+        GoToAction(fl.green_keyhole[0]-0.6, fl.green_keyhole[1]-0.3, fl.green_keyhole[2]-fl.keyhole_outer_dia*0.65,"GKeyholeLoopDown",5), # get below green keyhole
+        GoToAction(fl.green_keyhole[0], fl.green_keyhole[1]-0.9, fl.green_keyhole[2],"GKeyholeLoopUp",3), # get to right height for green keyhole
         GoToAction(fl.green_keyhole[0],fl.green_keyhole[1]+0.3,None,"GKeyholeLoopThrough",2), # go through keyhole and align for next keyhole
         GoToAction(None, None, fl.blue_arch[2], "BArchPrepareHeight",3), # prepare to go through blue arch
         #WaitAction(1), # settle a bit
@@ -46,7 +46,7 @@ if __name__ == "__main__":
     ], ErrorHandlingStrategy.LAND).run_sequence()
     logging.info(f"First color: {first_color}")
     if first_color == drone_manager.last_color:
-        logging.warn(f"Drone did not change color, something went wrong!")
+        logging.warning(f"Drone did not change color, something went wrong!")
         # take a guess at one of the colors that's not the first color
         if first_color == "Blue":
             logging.info("Guessing red landing pad")
@@ -70,6 +70,6 @@ if __name__ == "__main__":
     SequentialAction(drone_manager, [
         TakeoffAction(),
         ArbitraryCodeAction(lambda dm: logging.info(f"Drone now at: {np.array2string(dm.drone_pose, 3)}")),
-        GoToAction(landing_loc[0], landing_loc[1], None, "GoToLanding", 5),
+        GoToAction(landing_loc[0], landing_loc[1], None, "GoToLanding", 4),
         LandAction()
     ], ErrorHandlingStrategy.LAND).run_sequence()

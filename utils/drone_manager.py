@@ -107,6 +107,8 @@ class DroneManager:
 
         self.last_control_loop_time = time.monotonic()
 
+        logging.info("DOUBLE CHECK: Controller is in LINK STATE?")
+
     def close(self):
         try:
             self.drone_update_loop.cancel()
@@ -254,7 +256,8 @@ class DroneManager:
             if np.linalg.norm(self.drone_pose[:3] - np.array([target_x, target_y, target_z])) < self.lerp_threshold:
                 break
             if timeout is not None and time.monotonic() - start_time > timeout:
-                logging.warning(f"GoToAction timed out after {time.monotonic()-start_time} seconds")
+
+                logging.warning(f"GoToAction timed out {np.linalg.norm(self.drone_pose[:3] - np.array([target_x, target_y, target_z])):.3f} meters off-target")
                 break
         self.managed_flight_state = ManagedFlightState.IDLE
     

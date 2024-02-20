@@ -12,7 +12,7 @@ keyhole_inner_dia = in_to_m(24)
 prog_mat_size = np.array([in_to_m(96), in_to_m(42)])
 color_mat_size = in_to_m(24)
 arch_inner_height = in_to_m(63)
-landing_pad_dia = in_to_m(30)
+landing_pad_dia = in_to_m(15)
 
 mat_1 = np.array([0, 0, 0])
 mat_2 = np.array([prog_mat_size[0]+prog_mat_size[1]/2-in_to_m(6), prog_mat_size[1]/2+in_to_m(24)+color_mat_size/2, 0])
