@@ -15,7 +15,7 @@ arch_inner_height = in_to_m(63)
 landing_pad_dia = in_to_m(15)
 
 mat_1 = np.array([0, 0, 0])
-mat_2 = np.array([prog_mat_size[0]+prog_mat_size[1]/2-in_to_m(6), prog_mat_size[1]/2+in_to_m(24)+color_mat_size/2, 0])
+mat_2 = np.array([prog_mat_size[0]+prog_mat_size[1]/2-in_to_m(6), prog_mat_size[1]/2+in_to_m(25)+color_mat_size/2, 0])
 
 red_arch = np.array([color_mat_size/2, 0, arch_inner_height/2])
 blue_arch = np.array([prog_mat_size[0]+prog_mat_size[1]/2, prog_mat_size[1]/2+in_to_m(54-24), arch_inner_height/2])

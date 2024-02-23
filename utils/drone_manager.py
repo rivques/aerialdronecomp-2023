@@ -287,15 +287,21 @@ class DroneManager:
             if color_raw[1] > 300 or color_raw[1] < 60:
                 color = "Red"
                 if set_led:
-                    self.raw_drone.set_drone_LED(255, 0, 0, 100)
+                    for _ in range(5):
+                        self.raw_drone.set_drone_LED(255, 0, 0, 100)
+                        time.sleep(0.1)
             elif color_raw[1] > 60 and color_raw[1] < 180:
                 color = "Green"
                 if set_led:
-                    self.raw_drone.set_drone_LED(0, 255, 0, 100)
+                    for _ in range(5):
+                        self.raw_drone.set_drone_LED(0, 255, 0, 100)
+                        time.sleep(0.1)
             elif color_raw[1] > 180 and color_raw[1] < 300:
                 color = "Blue"
                 if set_led:
-                    self.raw_drone.set_drone_LED(0, 0, 255, 100)
+                    for _ in range(5):
+                        self.raw_drone.set_drone_LED(0, 0, 255, 100)
+                        time.sleep(0.1)
             self.last_color = color
             return color
         else:
