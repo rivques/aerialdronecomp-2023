@@ -1,0 +1,278 @@
+rivques@riv-mbp aerialdronecomp-2023 % python3 firstroute.py  
+
+codrone-edu library version 1.9
+Please remove AA batteries while plugged into your computer.
+For more information go to: robolink.com/edu-controller-issue
+
+Found CoDrone EDU controller.  /dev/cu.usbmodem37A2396B35321
+Connecting to CoDrone EDU controller.
+Connected to CoDrone EDU
+Battery = 100 %
+Lay the drone on a flat surface & Do not move CoDrone EDU
+Done calibrating.
+INFO:root:DOUBLE CHECK: Controller is in LINK STATE?
+Drone ready, press enter to start!INFO:root:Now running ReadColorAndSetLEDAction...
+INFO:root:Color: Green
+INFO:root:Now running TakeoffAction...
+INFO:root:Now running ArchPrepareAlt...
+INFO:root:Now running GoThroughArch...
+INFO:root:Now running YKeyholePrepareHeight...
+INFO:root:Now running GoThroughYKeyhole...
+WARNING:root:GoToAction timed out 0.165 meters off-target
+INFO:root:Now running GKeyholePrepareHeight...
+WARNING:root:GoToAction timed out 0.285 meters off-target
+INFO:root:Now running GoThroughGKeyhole...
+WARNING:root:GoToAction timed out 0.253 meters off-target
+INFO:root:Now running BArchPrepareHeight...
+INFO:root:Now running GoThroughBlueArch...
+WARNING:root:GoToAction timed out 0.166 meters off-target
+INFO:root:Now running LandAction...
+INFO:root:Now running ReadColorAndSetLEDAction...
+INFO:root:Color: Red
+rivques@riv-mbp aerialdronecomp-2023 % python3 set_white.py 
+codrone-edu library version 1.9
+Please remove AA batteries while plugged into your computer.
+For more information go to: robolink.com/edu-controller-issue
+
+Found CoDrone EDU controller.  /dev/cu.usbmodem37A2396B35321
+Connecting to CoDrone EDU controller.
+Connected to CoDrone EDU
+Battery = 100 %
+rivques@riv-mbp aerialdronecomp-2023 % python3 doublelooproute.py 
+
+codrone-edu library version 1.9
+Please remove AA batteries while plugged into your computer.
+For more information go to: robolink.com/edu-controller-issue
+
+Found CoDrone EDU controller.  /dev/cu.usbmodem37A2396B35321
+Connecting to CoDrone EDU controller.
+Connected to CoDrone EDU
+Battery = 100 %
+Lay the drone on a flat surface & Do not move CoDrone EDU
+Done calibrating.
+INFO:root:DOUBLE CHECK: Controller is in LINK STATE?
+Drone ready, press enter to start!INFO:root:Now running ReadColorAndSetLEDAction...
+INFO:root:Color: Red
+INFO:root:Now running ArbitraryCodeAction...
+INFO:root:Now running TakeoffAction...
+INFO:root:Now running ArchPrepareAlt...
+INFO:root:Now running GoThroughArch...
+INFO:root:Now running YKeyholePrepareHeight...
+INFO:root:Now running GoThroughYKeyhole...
+INFO:root:Now running YKeyholeLoopDown...
+INFO:root:Now running YKeyholeLoopUp...
+INFO:root:Now running YKeyholeLoopThrough...
+INFO:root:Now running GKeyholePrepareHeight...
+INFO:root:Now running GoThroughGKeyhole...
+INFO:root:Now running GKeyholeLoopDown...
+WARNING:root:GoToAction timed out 0.325 meters off-target
+INFO:root:Now running GKeyholeLoopUp...
+WARNING:root:GoToAction timed out 1.192 meters off-target
+INFO:root:Now running GKeyholeLoopThrough...
+WARNING:root:GoToAction timed out 0.647 meters off-target
+INFO:root:Now running BArchPrepareHeight...
+WARNING:root:GoToAction timed out 0.473 meters off-target
+INFO:root:Now running GoThroughBlueArch...
+WARNING:root:GoToAction timed out 1.041 meters off-target
+INFO:root:Now running LandAction...
+INFO:root:Now running ReadColorAndSetLEDAction...
+INFO:root:Color: Red
+INFO:root:First color: Red
+WARNING:root:Drone did not change color, something went wrong!
+INFO:root:Guessing green landing pad
+INFO:root:Drone now at: [ 2.22928762
+  0.65129298
+  1.04437828
+ 60.        ]
+INFO:root:Now running TakeoffAction...
+^X^CINFO:root:Error thrown, landing...
+^CINFO:root:Error thrown, landing...
+^CTraceback (most recent call last):
+  File "/Users/rivques/Documents/aerialdronecomp-2023/utils/basic_actions.py", line 114, in setup
+    await action.setup(self.drone_manager)
+  File "/Users/rivques/Documents/aerialdronecomp-2023/utils/basic_actions.py", line 70, in setup
+    await drone_manager.takeoff()
+  File "/Users/rivques/Documents/aerialdronecomp-2023/utils/drone_manager.py", line 125, in takeoff
+    self.raw_drone.takeoff() # blocks
+  File "/Users/rivques/Library/Python/3.9/lib/python/site-packages/codrone_edu/drone.py", line 1479, in takeoff
+    time.sleep(0.01)
+KeyboardInterrupt
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/Users/rivques/Documents/aerialdronecomp-2023/utils/basic_actions.py", line 93, in run_sequence
+    self.event_loop.run_until_complete(seqtask)
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/asyncio/base_events.py", line 629, in run_until_complete
+    self.run_forever()
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/asyncio/base_events.py", line 596, in run_forever
+    self._run_once()
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/asyncio/base_events.py", line 1890, in _run_once
+    handle._run()
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/asyncio/events.py", line 80, in _run
+    self._context.run(self._callback, *self._args)
+  File "/Users/rivques/Documents/aerialdronecomp-2023/utils/basic_actions.py", line 124, in setup
+    await self.drone_manager.land()
+  File "/Users/rivques/Documents/aerialdronecomp-2023/utils/drone_manager.py", line 132, in land
+    self.raw_drone.land() # blocks
+  File "/Users/rivques/Library/Python/3.9/lib/python/site-packages/codrone_edu/drone.py", line 1500, in land
+    state = self.get_state_data()
+  File "/Users/rivques/Library/Python/3.9/lib/python/site-packages/codrone_edu/drone.py", line 669, in get_state_data
+    time.sleep(delay)
+KeyboardInterrupt
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/Users/rivques/Documents/aerialdronecomp-2023/doublelooproute.py", line 70, in <module>
+    SequentialAction(drone_manager, [
+  File "/Users/rivques/Documents/aerialdronecomp-2023/utils/basic_actions.py", line 99, in run_sequence
+    self.drone_manager.raw_drone.land()
+  File "/Users/rivques/Library/Python/3.9/lib/python/site-packages/codrone_edu/drone.py", line 1500, in land
+    state = self.get_state_data()
+  File "/Users/rivques/Library/Python/3.9/lib/python/site-packages/codrone_edu/drone.py", line 669, in get_state_data
+    time.sleep(delay)
+KeyboardInterrupt
+^C
+rivques@riv-mbp aerialdronecomp-2023 % python3 set_white.py      
+codrone-edu library version 1.9
+Please remove AA batteries while plugged into your computer.
+For more information go to: robolink.com/edu-controller-issue
+
+Found CoDrone EDU controller.  /dev/cu.usbmodem37A2396B35321
+Connecting to CoDrone EDU controller.
+Connected to CoDrone EDU
+Battery = 100 %
+rivques@riv-mbp aerialdronecomp-2023 % python3 doublelooproute.py
+
+codrone-edu library version 1.9
+Please remove AA batteries while plugged into your computer.
+For more information go to: robolink.com/edu-controller-issue
+
+Found CoDrone EDU controller.  /dev/cu.usbmodem37A2396B35321
+Connecting to CoDrone EDU controller.
+Connected to CoDrone EDU
+Battery = 100 %
+Lay the drone on a flat surface & Do not move CoDrone EDU
+Done calibrating.
+INFO:root:DOUBLE CHECK: Controller is in LINK STATE?
+Drone ready, press enter to start!INFO:root:Now running ReadColorAndSetLEDAction...
+INFO:root:Color: Green
+INFO:root:Now running ArbitraryCodeAction...
+INFO:root:Now running TakeoffAction...
+INFO:root:Now running ArchPrepareAlt...
+INFO:root:Now running GoThroughArch...
+INFO:root:Now running YKeyholePrepareHeight...
+INFO:root:Now running GoThroughYKeyhole...
+WARNING:root:GoToAction timed out 0.155 meters off-target
+INFO:root:Now running YKeyholeLoopDown...
+INFO:root:Now running YKeyholeLoopUp...
+INFO:root:Now running YKeyholeLoopThrough...
+WARNING:root:GoToAction timed out 0.395 meters off-target
+INFO:root:Now running GKeyholePrepareHeight...
+INFO:root:Now running GoThroughGKeyhole...
+INFO:root:Now running GKeyholeLoopDown...
+INFO:root:Now running GKeyholeLoopUp...
+INFO:root:Now running GKeyholeLoopThrough...
+WARNING:root:GoToAction timed out 0.180 meters off-target
+INFO:root:Now running BArchPrepareHeight...
+INFO:root:Now running GoThroughBlueArch...
+WARNING:root:GoToAction timed out 0.216 meters off-target
+INFO:root:Now running LandAction...
+INFO:root:Now running ReadColorAndSetLEDAction...
+INFO:root:Color: Blue
+INFO:root:First color: Green
+INFO:root:Drone now at: [2.74135923
+ 1.51404059
+ 0.047995
+ 9.        ]
+INFO:root:Now running TakeoffAction...
+INFO:root:Now running ArbitraryCodeAction...
+INFO:root:Drone now at: [2.74135923
+ 1.51404059
+ 0.047995
+ 9.        ]
+INFO:root:Now running GoToLanding...
+WARNING:root:GoToAction timed out 0.359 meters off-target
+INFO:root:Now running LandAction...
+rivques@riv-mbp aerialdronecomp-2023 % python3 set_white.py      
+codrone-edu library version 1.9
+Please remove AA batteries while plugged into your computer.
+For more information go to: robolink.com/edu-controller-issue
+
+Found CoDrone EDU controller.  /dev/cu.usbmodem2073397F59311
+Connecting to CoDrone EDU controller.
+Connected to CoDrone EDU
+Battery = 100 %
+rivques@riv-mbp aerialdronecomp-2023 % python3 doublelooproute.py
+codrone-edu library version 1.9
+Please remove AA batteries while plugged into your computer.
+For more information go to: robolink.com/edu-controller-issue
+
+Found CoDrone EDU controller.  /dev/cu.usbmodem2073397F59311
+Connecting to CoDrone EDU controller.
+Connected to CoDrone EDU
+Battery = 100 %
+^CTraceback (most recent call last):
+  File "/Users/rivques/Documents/aerialdronecomp-2023/doublelooproute.py", line 10, in <module>
+    drone_manager = DroneManager(drone_type=DroneType.REAL, show_error_graph=False)
+  File "/Users/rivques/Documents/aerialdronecomp-2023/utils/drone_manager.py", line 75, in __init__
+    self.raw_drone.pair()
+  File "/Users/rivques/Library/Python/3.9/lib/python/site-packages/codrone_edu/drone.py", line 1458, in pair
+    self.open(portname)
+  File "/Users/rivques/Library/Python/3.9/lib/python/site-packages/codrone_edu/drone.py", line 1097, in open
+    time.sleep(0.1)
+KeyboardInterrupt
+
+rivques@riv-mbp aerialdronecomp-2023 % 
+rivques@riv-mbp aerialdronecomp-2023 % 
+rivques@riv-mbp aerialdronecomp-2023 % python3 doublelooproute.py
+
+codrone-edu library version 1.9
+Please remove AA batteries while plugged into your computer.
+For more information go to: robolink.com/edu-controller-issue
+
+Found CoDrone EDU controller.  /dev/cu.usbmodem2073397F59311
+Connecting to CoDrone EDU controller.
+Connected to CoDrone EDU
+Battery = 100 %
+Lay the drone on a flat surface & Do not move CoDrone EDU
+Done calibrating.
+INFO:root:DOUBLE CHECK: Controller is in LINK STATE?
+Drone ready, press enter to start!INFO:root:Now running ReadColorAndSetLEDAction...
+INFO:root:Color: Red
+INFO:root:Now running ArbitraryCodeAction...
+INFO:root:Now running TakeoffAction...
+INFO:root:Now running ArchPrepareAlt...
+INFO:root:Now running GoThroughArch...
+INFO:root:Now running YKeyholePrepareHeight...
+INFO:root:Now running GoThroughYKeyhole...
+INFO:root:Now running YKeyholeLoopDown...
+INFO:root:Now running YKeyholeLoopUp...
+WARNING:root:GoToAction timed out 0.195 meters off-target
+INFO:root:Now running YKeyholeLoopThrough...
+INFO:root:Now running GKeyholePrepareHeight...
+INFO:root:Now running GoThroughGKeyhole...
+INFO:root:Now running GKeyholeLoopDown...
+INFO:root:Now running GKeyholeLoopUp...
+INFO:root:Now running GKeyholeLoopThrough...
+INFO:root:Now running BArchPrepareHeight...
+INFO:root:Now running GoThroughBlueArch...
+WARNING:root:GoToAction timed out 0.433 meters off-target
+INFO:root:Now running LandAction...
+INFO:root:Now running ReadColorAndSetLEDAction...
+INFO:root:Color: Blue
+INFO:root:First color: Red
+INFO:root:Drone now at: [2.52260876
+ 1.48068404
+ 0.06998435
+ 1.        ]
+INFO:root:Now running TakeoffAction...
+INFO:root:Now running ArbitraryCodeAction...
+INFO:root:Drone now at: [-0.03703015
+  0.00136308
+  0.92236376
+  0.        ]
+INFO:root:Now running GoToLanding...
+INFO:root:Now running LandAction...
+rivques@riv-mbp aerialdronecomp-2023 % 
