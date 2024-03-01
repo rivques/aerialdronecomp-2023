@@ -64,12 +64,28 @@ class LandAction(Action):
         await drone_manager.land()
     async def loop(self, drone_manager: DroneManager) -> bool:
         return drone_manager.managed_flight_state == ManagedFlightState.LANDED
-
+    
+class EmergencyStopAction(Action):
+    async def setup(self, drone_manager: DroneManager):
+        drone_manager.raw_drone.emergency_stop()
+    async def loop(self, drone_manager: DroneManager) -> bool:
+        return True
+    
 class TakeoffAction(Action):
     async def setup(self, drone_manager: DroneManager):
         await drone_manager.takeoff()
     async def loop(self, drone_manager: DroneManager) -> bool:
         return True
+
+class FastTakeoffAction(Action):
+    def __init__(self, altitude: float = 1.0, timeout: float = None):
+        self.altitude = altitude
+        self.timeout = timeout
+    async def setup(self, drone_manager: DroneManager):
+        await drone_manager.fast_takeoff(self.altitude)
+        await drone_manager.go_to_abs(0, 0, self.altitude, timeout=self.timeout)
+    async def loop(self, drone_manager: DroneManager) -> bool:
+        return drone_manager.managed_flight_state == ManagedFlightState.IDLE
 
 class WaitAction(Action):
     def __init__(self, wait_time=1.0) -> None:

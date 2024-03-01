@@ -10,7 +10,7 @@ if __name__ == "__main__":
     drone_manager = DroneManager(drone_type=DroneType.REAL, show_error_graph=False)
 
     # wait for signal to take off
-    input("Drone ready, press enter to start!")
+    # input("Drone ready, press enter to start!")
     drone_manager.ignore_next_loop_warning()
 
     first_color = ""
@@ -51,12 +51,15 @@ if __name__ == "__main__":
         if first_color == "Blue":
             logging.info("Guessing red landing pad")
             landing_loc = fl.red_landing_pad
+            drone_manager.raw_drone.set_drone_LED(255, 0, 0, 255)
         elif first_color == "Red":
             logging.info("Guessing green landing pad")
             landing_loc = fl.green_landing_pad
+            drone_manager.raw_drone.set_drone_LED(0, 255, 0, 255)
         else:
             logging.info("Guessing blue landing pad")
             landing_loc = fl.blue_landing_pad
+            drone_manager.raw_drone.set_drone_LED(0, 0, 255, 255)
     else:
         if drone_manager.last_color == "Blue":
             landing_loc = fl.blue_landing_pad

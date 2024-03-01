@@ -25,4 +25,4 @@ green_keyhole = np.array([prog_mat_size[0]+prog_mat_size[1]-in_to_m(40), prog_ma
 
 blue_landing_pad = np.array([landing_pad_dia/2+color_mat_size/2, in_to_m(3), 0])
 red_landing_pad = np.array([-(landing_pad_dia/2+color_mat_size/2), in_to_m(3), 0])
-green_landing_pad = np.array([0, -color_mat_size, 0])
+green_landing_pad = np.array([0, -color_mat_size+0.2, 0])

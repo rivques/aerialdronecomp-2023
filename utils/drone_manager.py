@@ -67,7 +67,7 @@ class DroneManager:
                 self.pid_controllers[i].set_auto_mode(False, last_output=0) # allow for disabling axes via property
                 self.current_output[i] = 0
 
-    def __init__(self, event_loop: asyncio.AbstractEventLoop = asyncio.get_event_loop(), drone_type = DroneType.REAL, show_error_graph = False, disabled_control_axes = [False, False, False, False], parent_name = None):
+    def __init__(self, event_loop: asyncio.AbstractEventLoop = asyncio.get_event_loop(), drone_type = DroneType.REAL, show_error_graph = False, disabled_control_axes = [False, False, False, False], parent_name = None, calibrate_sensors = True):
         # set up drone
         self.raw_drone: Drone = Drone()
         self.drone_type = drone_type
@@ -75,8 +75,9 @@ class DroneManager:
             self.raw_drone.pair()
             self.raw_drone.set_drone_LED(255, 255, 255, 100)
             # calibrate sensors
-            self.raw_drone.set_initial_pressure()
-            self.raw_drone.reset_sensor()
+            if calibrate_sensors:
+                self.raw_drone.set_initial_pressure()
+                self.raw_drone.reset_sensor()
 
         # set up drone state
         self.drone_pose: np.ndarray = np.array([0, 0, 0, 0]) # x, y, z, yaw
@@ -120,6 +121,29 @@ class DroneManager:
                 self.render_process.terminate()
             except AttributeError:
                 pass
+    
+    async def fast_takeoff(self, altitude: float = 1.0):
+        # the drone api's takeoff(), but without the sleep at the end
+        self.raw_drone.reset_move()
+        self.raw_drone.sendTakeOff()
+
+        timeout = 4
+        init_time = time.time()
+        time_elapsed = time.time() - init_time
+        while time_elapsed < timeout:
+            time_elapsed = time.time() - init_time
+            state = self.raw_drone.get_state_data()
+            state_flight = state[2]
+            if state_flight is ModeFlight.TakeOff:
+                break
+            else:
+                self.raw_drone.sendTakeOff()
+                time.sleep(0.01)
+
+        self.target_pose = np.insert(self.target_pose, 2, altitude) # keep the rest of the pose but set the altitude (idx 2)
+        for controller in self.pid_controllers:
+            controller.reset()
+
 
     async def takeoff(self):
         self.raw_drone.takeoff() # blocks
