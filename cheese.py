@@ -6,8 +6,8 @@ import logging
 logging.basicConfig(level=logging.INFO)
 import utils.field_locations as fl
 
-CHEESE_FRONT_POS = [fl.green_keyhole[0]-0.1, fl.green_keyhole[1]-0.40, fl.green_keyhole[2]-0.1]
-CHEESE_BACK_POS = [fl.green_keyhole[0]-0.1, fl.blue_arch[1]+0.15, fl.green_keyhole[2]-0.1]
+CHEESE_FRONT_POS = [fl.green_keyhole[0], fl.green_keyhole[1]-0.40, fl.green_keyhole[2]-0.1]
+CHEESE_BACK_POS = [fl.green_keyhole[0], fl.blue_arch[1]+0.2, fl.green_keyhole[2]-0.1]
 TIME_PER_FULL_CYCLE = 6
 TIME_NEEDED_POST_CHEESE = 8
 TOTAL_TIME = 60
@@ -92,7 +92,7 @@ if __name__ == "__main__":
 
     # hop
     SequentialAction(drone_manager, [
-            FastTakeoffAction(0.25),
+            FastTakeoffAction(0.25, 3),
             GoToAction(landing_loc[0], landing_loc[1], None, "GoToLanding", 4),
             EmergencyStopAction(),
             EmergencyStopAction(),

@@ -8,3 +8,4 @@ if __name__ == "__main__":
     drone = Drone()
     drone.pair()
     drone.set_drone_LED(255,255,255,255)
+    drone.reset_sensor()
